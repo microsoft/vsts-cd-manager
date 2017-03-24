@@ -1,7 +1,13 @@
+#-------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for
+# license information.
+#--------------------------------------------------------------------------
+
 from setuptools import setup, find_packages
 
-NAME = "vsts_sdk"
-VERSION = "1.0.0"
+NAME = "vsts-cd-manager"
+VERSION = "0.115.1"
 
 # To install the library, run the following
 #
@@ -15,9 +21,9 @@ REQUIRES = ["msrest>=0.2.0"]
 setup(
     name=NAME,
     version=VERSION,
-    description="SDK to use the APIs for Team Services",
+    description="Python wrapper around some of the VSTS APIs",
     author_email="jpricket@microsoft.com",
-    url="https://github.com/microsoft/vsts-sdk-for-python",
+    url="https://github.com/microsoft/vsts-cd-manager",
     keywords=["Microsoft", "VSTS", "Team Services", "SDK", "AzureTfs"],
     install_requires=REQUIRES,
     packages=find_packages(),
