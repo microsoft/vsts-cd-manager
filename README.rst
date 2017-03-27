@@ -13,4 +13,10 @@ Packaging
 =========
 
 The released packages for this code can be found here https://pypi.python.org/pypi/vsts-cd-manager. 
-Use the standard PYPI packaging flow to push a new release.
+Use the standard PYPI packaging flow to push a new release. Make sure to increment the version number appropriately.
+
+*Example*
+::
+    python setup.py sdist
+    twine upload dist/*
+::
