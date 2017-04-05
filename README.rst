@@ -18,5 +18,5 @@ Use the standard PYPI packaging flow to push a new release. Make sure to increme
 *Example*
 ::
     python setup.py sdist
-    twine upload dist/*
+    python -m twine upload dist/*
 ::
