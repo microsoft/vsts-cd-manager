@@ -116,18 +116,15 @@ class ContinuousDeliveryManager(object):
                                 Property('deploymentSlot', azure_deployment_slot),
                                 Property('location', self._azure_info.webapp_location),
                                 Property('AuthInfo', 'Bearer ' + vsts_app_auth_token)]
-        test_configuration = [Property('appServicePlan',''),
-                              Property('appServicePlanName',''),
-                              Property('appServicePricingTier','Premium'),
-                              Property('testWebAppLocation', self._azure_info.webapp_location),
-                              Property('testWebAppName', self._azure_info.website_name)]
+        test_configuration = None  # This is not set because we don't won't a test config setup
         config = ContinuousDeploymentConfiguration(account_configuration, pipeline_configuration, project_configuration,
                                                    source_configuration, target_configuration, test_configuration)
         # Configure the continuous deliver using VSTS as a backend
         response = az_tfs.configure_continuous_deployment(config)
         if response.status == 'inProgress':
             final_status = self._wait_for_cd_completion(az_tfs, response)
-            return self._get_summary(final_status, vsts_account_name, self._azure_info.subscription_id, self._azure_info.resource_group_name, self._azure_info.website_name)
+            return self._get_summary(final_status, vsts_account_name, self._azure_info.subscription_id,
+                                     self._azure_info.resource_group_name, self._azure_info.website_name)
         else:
             raise RuntimeError('Unknown status returned from configure_continuous_deployment: ' + response.status)
 
@@ -195,22 +192,40 @@ class ContinuousDeliveryManager(object):
     def _get_summary(self, final_status, account_name, subscription_id, resource_group_name, website_name):
         summary = '\n'
         step_ids = final_status.deployment_step_ids
-        if not step_ids or len(step_ids) == 0: return
+        if not step_ids or len(step_ids) == 0: return None
         steps = {}
         for property in step_ids:
             steps[property.name] = property.value
         # Add the vsts account info
+        account_created = False
         account_url = 'https://{}.visualstudio.com'.format(quote(account_name))
         if steps['AccountCreated'] == '0':
             summary += "The VSTS account '{}' was updated to handle the continuous delivery.\n".format(account_url)
         elif steps['AccountCreated'] == '1':
+            account_created = True
             summary += "The VSTS account '{}' was created to handle the continuous delivery.\n".format(account_url)
+
         # Add the subscription info
         website_url = 'https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.Web/sites/{}/vstscd'.format(
             quote(subscription_id), quote(resource_group_name), quote(website_name))
         summary += 'You can check on the status of the Azure web site deployment here:\n'
         summary += website_url + '\n'
-        return summary
+
+        # setup the build url and release url
+        if steps['ProjectId']:
+            project_id = steps['ProjectId']
+            build_url = ''
+            if steps['BuildDefinitionId']:
+                build_url = '{}/{}/_build?_a=simple-process&definitionId={}'.format(
+                    account_url, quote(project_id), quote(steps['BuildDefinitionId']))
+            release_url = ''
+            if steps['ReleaseDefinitionId']:
+                release_url = '{}/{}/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId={}&_a=releases'.format(
+                    account_url, quote(project_id), quote(steps['ReleaseDefinitionId']))
+
+        return ContinuousDeliveryResult(account_created, account_url, resource_group_name,
+                                        subscription_id, website_name, website_url, summary,
+                                        build_url, release_url, final_status)
 
     def _skip_update_progress(self, count, total, message):
         return
@@ -232,3 +247,17 @@ class _RepositoryInfo(object):
         self.url = None
         self.branch = None
         self.git_token = None
+
+class ContinuousDeliveryResult(object):
+    def __init__(self, account_created, account_url, resource_group, subscription_id, website_name, cd_url, message, build_url, release_url, final_status):
+        self.vsts_account_created = account_created
+        self.vsts_account_url = account_url
+        self.vsts_build_def_url = build_url
+        self.vsts_release_def_url = release_url
+        self.azure_resource_group = resource_group
+        self.azure_subscription_id = subscription_id
+        self.azure_website_name = website_name
+        self.azure_continuous_delivery_url = cd_url
+        self.status = "SUCCESS"
+        self.status_message = message
+        self.status_details = final_status
