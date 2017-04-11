@@ -11,9 +11,12 @@ try:
 except ImportError:
     from urllib import quote  #pylint: disable=no-name-in-module
     from urlparse import urlparse  #pylint: disable=import-error
-from azuretfs import AzureTfs, VstsInfoProvider
-from azuretfs.models import (ContinuousDeploymentConfiguration, ResourceConfiguration,
-                             SourceConfiguration, SourceRepository, Property, VstsInfo)
+from azuretfs import VstsInfoProvider
+from continuous_delivery import ContinuousDelivery
+from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoParameters, BuildConfiguration,
+                                        CiArtifact, CiConfiguration, ProvisioningConfiguration,
+                                        ProvisioningConfigurationSource, ProvisioningConfigurationTarget,
+                                        SlotSwapConfiguration, SourceRepository)
 
 # Use this class to setup or remove continuous delivery mechanisms for Azure web sites using VSTS build and release
 class ContinuousDeliveryManager(object):
@@ -86,64 +89,59 @@ class ContinuousDeliveryManager(object):
         :return: a message indicating final status and instructions for the user
         """
 
-        app_type = self._get_app_project_type(app_type)
         branch = self._repo_info.branch or 'refs/heads/master'
 
         # Verify inputs before we start generating tokens
-        sourceRepository, account_name, team_project_name = self._get_source_repository(self._repo_info.url,
-            self._repo_info.git_token, self._azure_info.credentials)
-        self._verify_vsts_parameters(vsts_account_name, sourceRepository)
+        source_repository, account_name, team_project_name = self._get_source_repository(self._repo_info.url,
+            self._repo_info.git_token, branch, self._azure_info.credentials)
+        self._verify_vsts_parameters(vsts_account_name, source_repository)
         vsts_account_name = vsts_account_name or account_name
         cd_project_name = team_project_name or self._azure_info.website_name
+        account_url = 'https://{}.visualstudio.com'.format(quote(vsts_account_name))
+        portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
-        # Create AzureTfs client
-        az_tfs = AzureTfs('3.2-preview', None, self._azure_info.credentials)
+        # TODO see if account exists and create it if needed
+        account_created = False
+
+        # Create ContinuousDelivery client
+        cd = ContinuousDelivery('3.2-preview', portalext_account_url, self._azure_info.credentials)
 
         # Construct the config body of the continuous delivery call
-        account_configuration = ResourceConfiguration(create_account,
-                                                      [Property('region', 'CUS'),
-                                                       Property('PortalExtensionUsesNewAcquisitionFlows', 'false')],
-                                                      vsts_account_name)
-        pipeline_configuration = None  # This is not set because we are not the ibiza portal
-        project_configuration = ResourceConfiguration(True, [Property('','')], cd_project_name)
-        source_configuration = SourceConfiguration(sourceRepository, branch)
-        target_configuration = [Property('resourceProperties', app_type),
-                                Property('resourceGroup', self._azure_info.resource_group_name),
-                                Property('subscriptionId', self._azure_info.subscription_id),
-                                Property('subscriptionName', self._azure_info.subscription_name),
-                                Property('tenantId', self._azure_info.tenant_id),
-                                Property('resourceName', self._azure_info.website_name),
-                                Property('deploymentSlot', azure_deployment_slot),
-                                Property('location', self._azure_info.webapp_location),
-                                Property('AuthInfo', 'Bearer ' + vsts_app_auth_token)]
-        test_configuration = None  # This is not set because we don't won't a test config setup
-        config = ContinuousDeploymentConfiguration(account_configuration, pipeline_configuration, project_configuration,
-                                                   source_configuration, target_configuration, test_configuration)
+        build_configuration = BuildConfiguration(app_type)
+        source = ProvisioningConfigurationSource("CodeRepository", source_repository, build_configuration)
+        auth_info = AuthorizationInfo("Headers", AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
+        slot_swap = SlotSwapConfiguration(azure_deployment_slot)
+        target = ProvisioningConfigurationTarget("Azure", "WindowsWebApp", self._azure_info.subscription_id,
+                                                 self._azure_info.subscription_name, self._azure_info.tenant_id,
+                                                 self._azure_info.website_name, self._azure_info.resource_group_name,
+                                                 self._azure_info.webapp_location, "Production", auth_info, slot_swap)
+        ci_config = CiConfiguration(CiArtifact(name=cd_project_name))
+        config = ProvisioningConfiguration(None, source, [target], ci_config)
+
         # Configure the continuous deliver using VSTS as a backend
-        response = az_tfs.configure_continuous_deployment(config)
-        if response.status == 'inProgress':
-            final_status = self._wait_for_cd_completion(az_tfs, response)
-            return self._get_summary(final_status, vsts_account_name, self._azure_info.subscription_id,
+        response = cd.provisioning_configuration(config)
+        if response.result.status == 'inProgress':
+            final_status = self._wait_for_cd_completion(cd, response)
+            return self._get_summary(final_status, account_url, vsts_account_name, account_created, self._azure_info.subscription_id,
                                      self._azure_info.resource_group_name, self._azure_info.website_name)
         else:
-            raise RuntimeError('Unknown status returned from configure_continuous_deployment: ' + response.status)
+            raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.result.status)
 
-    def _verify_vsts_parameters(self, cd_account, sourceRepository):
+    def _verify_vsts_parameters(self, cd_account, source_repository):
         # if provider is vsts and repo is not vsts then we need the account name
-        if sourceRepository.repository_type in [2, 4] and not cd_account:
+        if source_repository.type in ["Github", "ExternalGit"] and not cd_account:
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a VSTS repository.')
 
-    def _get_source_repository(self, uri, token, cred):
-        # Determine the type of repository (vstsgit == 1, github == 2, tfvc == 3, externalGit == 4)
+    def _get_source_repository(self, uri, token, branch, cred):
+        # Determine the type of repository (TfsGit, github, tfvc, externalGit)
         # Find the identifier and set the properties; default to externalGit
-        type = 4
+        type = 'ExternalGit'
         identifier = uri
-        properties = []
         account_name = None
         team_project_name = None
         match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com.*\/_git\/(.+)', uri, re.IGNORECASE)
         if match:
-            type = 1
+            type = 'TfsGit'
             account_name = match.group(1)
             # we have to get the repo id as the identifier
             info = self._get_vsts_info(uri, cred)
@@ -152,57 +150,46 @@ class ContinuousDeliveryManager(object):
         else:
             match = re.match(r'[htps]+\:\/\/github\.com\/(.+)', uri, re.IGNORECASE)
             if match:
-                type = 2
+                type = 'Github'
                 identifier = match.group(1)
-                properties = [Property('accessToken', token)]
             else:
                 match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com\/(.+)', uri, re.IGNORECASE)
                 if match:
-                    type = 3
+                    type = 'TFVC'
                     identifier = match.group(2)
                     account_name = match.group(1)
-        sourceRepository = SourceRepository(identifier, properties, type)
+        sourceRepository = SourceRepository(type, identifier, branch, token)
         return sourceRepository, account_name, team_project_name
 
     def _get_vsts_info(self, vsts_repo_url, cred):
         vsts_info_client = VstsInfoProvider('3.2-preview', vsts_repo_url, cred)
         return vsts_info_client.get_vsts_info()
 
-    def _get_app_project_type(self, cd_app_type):
-        app_type =  '{{\"webAppProjectType\":\"{}\"}}'.format(cd_app_type)
-        return app_type
-
-    def _wait_for_cd_completion(self, az_tfs, response):
+    def _wait_for_cd_completion(self, cd, response):
         # Wait for the configuration to finish and report on the status
         step = 5
         max = 100
         self._update_progress(step, max, 'Setting up VSTS continuous deployment')
-        status = az_tfs.get_continuous_deployment_operation(response.id)
-        while status.status == 'queued' or status.status == 'inProgress':
+        config = cd.get_provisioning_configuration(response.id)
+        while config.ci_configuration.result.status == 'queued' or config.ci_configuration.result.status == 'inProgress':
             step += 5 if step + 5 < max else 0
-            self._update_progress(step, max, 'Setting up VSTS continuous deployment (' + status.status + ')')
+            self._update_progress(step, max, 'Setting up VSTS continuous deployment (' + config.ci_configuration.result.status + ')')
             time.sleep(2)
-            status = az_tfs.get_continuous_deployment_operation(response.id)
-        if status.status == 'failed':
+            config = cd.get_provisioning_configuration(response.id)
+        if config.ci_configuration.result.status == 'failed':
             self._update_progress(max, max, 'Setting up VSTS continuous deployment (FAILED)')
-            raise RuntimeError(status.result_message)
+            raise RuntimeError(config.ci_configuration.result.status_message)
         self._update_progress(max, max, 'Setting up VSTS continuous deployment (SUCCEEDED)')
-        return status
+        return config
 
-    def _get_summary(self, final_status, account_name, subscription_id, resource_group_name, website_name):
+    def _get_summary(self, provisioning_configuration, account_url, account_name, account_created, subscription_id, resource_group_name, website_name):
         summary = '\n'
-        step_ids = final_status.deployment_step_ids
-        if not step_ids or len(step_ids) == 0: return None
-        steps = {}
-        for property in step_ids:
-            steps[property.name] = property.value
+        if not provisioning_configuration or not provisioning_configuration.id: return None
+
         # Add the vsts account info
-        account_created = False
-        account_url = 'https://{}.visualstudio.com'.format(quote(account_name))
-        if steps['AccountCreated'] == '0':
+        if not account_created:
             summary += "The VSTS account '{}' was updated to handle the continuous delivery.\n".format(account_url)
-        elif steps['AccountCreated'] == '1':
-            account_created = True
+        else:
             summary += "The VSTS account '{}' was created to handle the continuous delivery.\n".format(account_url)
 
         # Add the subscription info
@@ -212,20 +199,20 @@ class ContinuousDeliveryManager(object):
         summary += website_url + '\n'
 
         # setup the build url and release url
-        if steps['ProjectId']:
-            project_id = steps['ProjectId']
-            build_url = ''
-            if steps['BuildDefinitionId']:
+        build_url = ''
+        release_url = ''
+        if provisioning_configuration.ci_configuration and provisioning_configuration.ci_configuration.project:
+            project_id = provisioning_configuration.ci_configuration.project.id
+            if provisioning_configuration.ci_configuration.build_definition:
                 build_url = '{}/{}/_build?_a=simple-process&definitionId={}'.format(
-                    account_url, quote(project_id), quote(steps['BuildDefinitionId']))
-            release_url = ''
-            if steps['ReleaseDefinitionId']:
+                    account_url, quote(project_id), quote(provisioning_configuration.ci_configuration.build_definition.id))
+            if provisioning_configuration.ci_configuration.release_definition:
                 release_url = '{}/{}/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId={}&_a=releases'.format(
-                    account_url, quote(project_id), quote(steps['ReleaseDefinitionId']))
+                    account_url, quote(project_id), quote(provisioning_configuration.ci_configuration.release_definition.id))
 
         return ContinuousDeliveryResult(account_created, account_url, resource_group_name,
                                         subscription_id, website_name, website_url, summary,
-                                        build_url, release_url, final_status)
+                                        build_url, release_url, provisioning_configuration)
 
     def _skip_update_progress(self, count, total, message):
         return
