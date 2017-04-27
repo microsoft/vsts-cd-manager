@@ -107,7 +107,6 @@ class ContinuousDelivery(object):
             request, header_parameters, body_content, **operation_config)
         if response.status_code not in [200, 202]:
             print("POST", request.url, file=stderr)
-            print("BODY", body_content)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
             raise HttpOperationError(self._deserialize, response)

@@ -5,6 +5,7 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+from __future__ import print_function
 from msrest.service_client import ServiceClient
 from msrest import Serializer, Deserializer
 from msrest.pipeline import ClientRawResponse

@@ -5,6 +5,7 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+from __future__ import print_function
 from sys import stderr
 from msrest.service_client import ServiceClient
 from msrest import Configuration, Serializer, Deserializer
