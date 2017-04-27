@@ -5,13 +5,13 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.serialization import Model
-
-
-class SlotSwapConfiguration(Model):
-    _attribute_map = {
-        'slot_name': {'key': 'slotName', 'type': 'str'},
-    }
-
-    def __init__(self, slot_name=None):
-        self.slot_name = slot_name
+from msrest.exceptions import (
+    ClientException,
+    SerializationError,
+    DeserializationError,
+    TokenExpiredError,
+    ClientRequestError,
+    AuthenticationError,
+    HttpOperationError,
+    ValidationError,
+)

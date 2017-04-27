@@ -10,8 +10,8 @@ from msrest.serialization import Model
 
 class AuthorizationInfo(Model):
     _attribute_map = {
-        'scheme': {'key': 'Scheme', 'type': 'str'},
-        'parameters': {'key': 'Parameters', 'type': 'AuthorizationInfoParameters'},
+        'scheme': {'key': 'scheme', 'type': 'str'},
+        'parameters': {'key': 'parameters', 'type': 'AuthorizationInfoParameters'},
     }
 
     def __init__(self, scheme=None, parameters=None):

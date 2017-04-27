@@ -8,14 +8,16 @@
 from msrest.serialization import Model
 
 
-class CiArtifact(Model):
+class VssJsonCollectionWrapperBase(Model):
+    """VssJsonCollectionWrapperBase.
+
+    :param count:
+    :type count: int
+    """
+
     _attribute_map = {
-        'id': {'key': 'id', 'type': 'str'},
-        'name': {'key': 'name', 'type': 'str'},
-        'url': {'key': 'url', 'type': 'str'},
+        'count': {'key': 'count', 'type': 'int'},
     }
 
-    def __init__(self, id=None, name=None, url=None):
-        self.id = id
-        self.name = name
-        self.url = url
+    def __init__(self, count=None):
+        self.count = count

@@ -33,11 +33,11 @@ class ContinuousDeliveryConfiguration(Configuration):
         if not isinstance(api_version, str):
             raise TypeError("Parameter 'api_version' must be str.")
         if not base_url:
-            base_url = 'https://stamp2.app.portalext.visualstudio.com/'
+            base_url = 'https://{account}.portalext.visualstudio.com/'
 
         super(ContinuousDeliveryConfiguration, self).__init__(base_url)
 
-        self.add_user_agent('continuousdelivery/{}'.format(VERSION))
+        self.add_user_agent('azurecli/{}/continuousdelivery/{}'.format(VERSION, VERSION))
 
         self.api_version = api_version
 
@@ -85,7 +85,7 @@ class ContinuousDelivery(object):
          :class:`HttpOperationError<msrest.exceptions.HttpOperationError>`
         """
         # Construct URL
-        url = '/_apis/continuousdelivery/provisioningconfiguration'
+        url = '/_apis/continuousdelivery/provisioningconfigurations'
 
         # Construct parameters
         query_parameters = {}
@@ -107,6 +107,7 @@ class ContinuousDelivery(object):
             request, header_parameters, body_content, **operation_config)
         if response.status_code not in [200, 202]:
             print("POST", request.url, file=stderr)
+            print("BODY", body_content)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
             raise HttpOperationError(self._deserialize, response)
@@ -143,9 +144,9 @@ class ContinuousDelivery(object):
          :class:`HttpOperationError<msrest.exceptions.HttpOperationError>`
         """
         # Construct URL
-        url = '/_apis/continuousdelivery/provisioningconfiguration/{provisioningConfigurationId}'
+        url = '/_apis/continuousdelivery/provisioningconfigurations/{provisioningConfigurationId}'
         path_format_arguments = {
-            'continuousDeploymentOperationId': self._serialize.url("provisioning_configuration_id", provisioning_configuration_id, 'str')
+            'provisioningConfigurationId': self._serialize.url("provisioning_configuration_id", provisioning_configuration_id, 'str')
         }
         url = self._client.format_url(url, **path_format_arguments)
 

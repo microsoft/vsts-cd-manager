@@ -10,9 +10,9 @@ from msrest.serialization import Model
 
 class ProvisioningConfigurationSource(Model):
     _attribute_map = {
-        'type': {'key': 'Type', 'type': 'str'},
-        'repository': {'key': 'Repository', 'type': 'Repository'},
-        'build_configuration': {'key': 'BuildConfiguration', 'type': 'str'},
+        'type': {'key': 'type', 'type': 'str'},
+        'repository': {'key': 'repository', 'type': 'SourceRepository'},
+        'build_configuration': {'key': 'buildConfiguration', 'type': 'BuildConfiguration'},
     }
 
     def __init__(self, type=None, repository=None, build_configuration=None):

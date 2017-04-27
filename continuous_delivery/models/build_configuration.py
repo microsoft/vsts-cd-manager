@@ -10,8 +10,10 @@ from msrest.serialization import Model
 
 class BuildConfiguration(Model):
     _attribute_map = {
-        'type': {'key': 'Type', 'type': 'str'},
+        'type': {'key': 'type', 'type': 'str'},
+        'working_directory': {'key': 'workingDirectory', 'type': 'str'},
     }
 
-    def __init__(self, type=None):
+    def __init__(self, type=None, working_directory=None):
         self.type = type
+        self.working_directory = working_directory

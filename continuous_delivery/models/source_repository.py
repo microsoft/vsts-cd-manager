@@ -10,14 +10,14 @@ from msrest.serialization import Model
 
 class SourceRepository(Model):
     _attribute_map = {
-        'type': {'key': 'Type', 'type': 'str'},
-        'identifier': {'key': 'Identifier', 'type': 'str'},
-        'default_branch': {'key': 'DefaultBranch', 'type': 'str'},
-        'access_token': {'key': 'AccessToken', 'type': 'str'},
+        'type': {'key': 'type', 'type': 'str'},
+        'identifier': {'key': 'id', 'type': 'str'},
+        'default_branch': {'key': 'defaultBranch', 'type': 'str'},
+        'authorization_info': {'key': 'authorizationInfo', 'type': 'AuthorizationInfo'},
     }
 
-    def __init__(self, type=None, identifier=None, default_branch=None, access_token = None):
+    def __init__(self, type=None, identifier=None, default_branch=None, authorization_info = None):
         self.type = type
         self.identifier = identifier
         self.default_branch = default_branch
-        self.access_token = access_token
+        self.authorization_info = authorization_info

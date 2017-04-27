@@ -10,30 +10,32 @@ from msrest.serialization import Model
 
 class ProvisioningConfigurationTarget(Model):
     _attribute_map = {
-        'provider': {'key': 'Provider', 'type': 'str'},
-        'target_type': {'key': 'Type', 'type': 'str'},
-        'subscription_id': {'key': 'SubscriptionId', 'type': 'str'},
-        'subscription_name': {'key': 'SubscriptionName', 'type': 'str'},
-        'tenant_id': {'key': 'TenantId', 'type': 'str'},
-        'resource_identifier': {'key': 'ResourceIdentifier', 'type': 'str'},
-        'resource_group_name': {'key': 'ResourceGroupName', 'type': 'str'},
-        'location': {'key': 'Location', 'type': 'str'},
-        'friendly_name': {'key': 'FriendlyName', 'type': 'str'},
-        'authorization_info': {'key': 'AuthorizaionInfo', 'type': 'AuthorizationInfo'},
-        'slot_swap_configuration': {'key': 'SlotSwapConfiguration', 'type': 'SlotSwapConfiguration'},
+        'provider': {'key': 'provider', 'type': 'str'},
+        'target_type': {'key': 'type', 'type': 'str'},
+        'environment_type': {'key': 'environmentType', 'type': 'str'},
+        'friendly_name': {'key': 'friendlyName', 'type': 'str'},
+        'subscription_id': {'key': 'subscriptionId', 'type': 'str'},
+        'subscription_name': {'key': 'subscriptionName', 'type': 'str'},
+        'tenant_id': {'key': 'tenantId', 'type': 'str'},
+        'resource_identifier': {'key': 'resourceIdentifier', 'type': 'str'},
+        'resource_group_name': {'key': 'resourceGroupName', 'type': 'str'},
+        'location': {'key': 'location', 'type': 'str'},
+        'authorization_info': {'key': 'authorizationInfo', 'type': 'AuthorizationInfo'},
+        'slot_swap_configuration': {'key': 'slotSwapConfiguration', 'type': 'SlotSwapConfiguration'},
     }
 
-    def __init__(self, provider=None, target_type=None, subscription_id=None, subscription_name=None, tenant_id=None, 
-                 resource_identifier=None, resource_group_name=None, location=None, friendly_name=None, authorization_info=None, 
+    def __init__(self, provider=None, target_type=None, environment_type=None, friendly_name=None, subscription_id=None, subscription_name=None, tenant_id=None,
+                 resource_identifier=None, resource_group_name=None, location=None, authorization_info=None,
                  slot_swap_configuration=None):
         self.provider = provider
         self.target_type = target_type
+        self.environment_type = environment_type
+        self.friendly_name = friendly_name
         self.subscription_id = subscription_id
         self.subscription_name = subscription_name
         self.tenant_id = tenant_id
         self.resource_identifier = resource_identifier
         self.resource_group_name = resource_group_name
         self.location = location
-        self.friendly_name = friendly_name
         self.authorization_info = authorization_info
         self.slot_swap_configuration = slot_swap_configuration

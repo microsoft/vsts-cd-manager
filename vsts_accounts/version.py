@@ -5,13 +5,5 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.serialization import Model
+VERSION = "3.2"
 
-
-class SlotSwapConfiguration(Model):
-    _attribute_map = {
-        'slot_name': {'key': 'slotName', 'type': 'str'},
-    }
-
-    def __init__(self, slot_name=None):
-        self.slot_name = slot_name

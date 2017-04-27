@@ -10,10 +10,10 @@ from msrest.serialization import Model
 
 class ProvisioningConfiguration(Model):
     _attribute_map = {
-        'id': {'key': 'Id', 'type': 'str'},
-        'source': {'key': 'Source', 'type': 'ProvisioningConfigurationSource'},
-        'targets': {'key': 'Targets', 'type': '[ProvisioningConfigurationTarget]'},
-        'ci_configuration': {'key': 'CiConfiguration', 'type': 'CiConfiguation'},
+        'id': {'key': 'id', 'type': 'str'},
+        'source': {'key': 'source', 'type': 'ProvisioningConfigurationSource'},
+        'targets': {'key': 'targets', 'type': '[ProvisioningConfigurationTarget]'},
+        'ci_configuration': {'key': 'ciConfiguration', 'type': 'CiConfiguration'},
     }
 
     def __init__(self, id=None, source=None, targets=None, ci_configuration=None):

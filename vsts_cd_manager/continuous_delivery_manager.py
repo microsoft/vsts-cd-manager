@@ -17,6 +17,8 @@ from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoPara
                                         CiArtifact, CiConfiguration, ProvisioningConfiguration,
                                         ProvisioningConfigurationSource, ProvisioningConfigurationTarget,
                                         SlotSwapConfiguration, SourceRepository)
+from vsts_accounts import Account
+from vsts_accounts.models import (AccountCreateInfoInternal)
 
 # Use this class to setup or remove continuous delivery mechanisms for Azure web sites using VSTS build and release
 class ContinuousDeliveryManager(object):
@@ -100,36 +102,45 @@ class ContinuousDeliveryManager(object):
         account_url = 'https://{}.visualstudio.com'.format(quote(vsts_account_name))
         portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
-        # TODO see if account exists and create it if needed
+        # Try to create the account (return value of None means that the account already exists
+        #accountClient = Account('3.2-preview', 'https://app.vssps.visualstudio.com', self._azure_info.credentials)
+        #account_creation_parameters = AccountCreateInfoInternal(vsts_account_name)
+        #creation_results = accountClient.create_account(account_creation_parameters, True)
+        #account_created = not creation_results == None
+        #print(creation_results)
+        #return None
+
         account_created = False
 
         # Create ContinuousDelivery client
-        cd = ContinuousDelivery('3.2-preview', portalext_account_url, self._azure_info.credentials)
+        cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
 
         # Construct the config body of the continuous delivery call
         build_configuration = BuildConfiguration(app_type)
-        source = ProvisioningConfigurationSource("CodeRepository", source_repository, build_configuration)
-        auth_info = AuthorizationInfo("Headers", AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
-        slot_swap = SlotSwapConfiguration(azure_deployment_slot)
-        target = ProvisioningConfigurationTarget("Azure", "WindowsWebApp", self._azure_info.subscription_id,
+        source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
+        auth_info = AuthorizationInfo('Headers', AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
+        slot_name = azure_deployment_slot or 'staging'
+        slot_swap = None  # TODO SlotSwapConfiguration(slot_name)
+        target = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'production', 'Production',
+                                                 self._azure_info.subscription_id,
                                                  self._azure_info.subscription_name, self._azure_info.tenant_id,
                                                  self._azure_info.website_name, self._azure_info.resource_group_name,
-                                                 self._azure_info.webapp_location, "Production", auth_info, slot_swap)
+                                                 self._azure_info.webapp_location, auth_info, slot_swap)
         ci_config = CiConfiguration(CiArtifact(name=cd_project_name))
         config = ProvisioningConfiguration(None, source, [target], ci_config)
 
         # Configure the continuous deliver using VSTS as a backend
         response = cd.provisioning_configuration(config)
-        if response.result.status == 'inProgress':
+        if response.ci_configuration.result.status == 'queued':
             final_status = self._wait_for_cd_completion(cd, response)
             return self._get_summary(final_status, account_url, vsts_account_name, account_created, self._azure_info.subscription_id,
                                      self._azure_info.resource_group_name, self._azure_info.website_name)
         else:
-            raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.result.status)
+            raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
 
     def _verify_vsts_parameters(self, cd_account, source_repository):
         # if provider is vsts and repo is not vsts then we need the account name
-        if source_repository.type in ["Github", "ExternalGit"] and not cd_account:
+        if source_repository.type in ['Github', 'ExternalGit'] and not cd_account:
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a VSTS repository.')
 
     def _get_source_repository(self, uri, token, branch, cred):
@@ -139,6 +150,7 @@ class ContinuousDeliveryManager(object):
         identifier = uri
         account_name = None
         team_project_name = None
+        auth_info = None
         match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com.*\/_git\/(.+)', uri, re.IGNORECASE)
         if match:
             type = 'TfsGit'
@@ -152,13 +164,14 @@ class ContinuousDeliveryManager(object):
             if match:
                 type = 'Github'
                 identifier = match.group(1)
+                auth_info = AuthorizationInfo('PersonalAccessToken', AuthorizationInfoParameters(None, token))
             else:
                 match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com\/(.+)', uri, re.IGNORECASE)
                 if match:
                     type = 'TFVC'
                     identifier = match.group(2)
                     account_name = match.group(1)
-        sourceRepository = SourceRepository(type, identifier, branch, token)
+        sourceRepository = SourceRepository(type, identifier, branch, auth_info)
         return sourceRepository, account_name, team_project_name
 
     def _get_vsts_info(self, vsts_repo_url, cred):
@@ -184,7 +197,7 @@ class ContinuousDeliveryManager(object):
 
     def _get_summary(self, provisioning_configuration, account_url, account_name, account_created, subscription_id, resource_group_name, website_name):
         summary = '\n'
-        if not provisioning_configuration or not provisioning_configuration.id: return None
+        if not provisioning_configuration: return None
 
         # Add the vsts account info
         if not account_created:
@@ -245,6 +258,6 @@ class ContinuousDeliveryResult(object):
         self.azure_subscription_id = subscription_id
         self.azure_website_name = website_name
         self.azure_continuous_delivery_url = cd_url
-        self.status = "SUCCESS"
+        self.status = 'SUCCESS'
         self.status_message = message
         self.status_details = final_status

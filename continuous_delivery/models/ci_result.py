@@ -10,8 +10,8 @@ from msrest.serialization import Model
 
 class CiResult(Model):
     _attribute_map = {
-        'status': {'key': 'Status', 'type': 'str'},
-        'status_message': {'key': 'StatusMessage', 'type': 'str'},
+        'status': {'key': 'status', 'type': 'str'},
+        'status_message': {'key': 'statusMessage', 'type': 'str'},
     }
 
     def __init__(self, status=None, status_message=None):

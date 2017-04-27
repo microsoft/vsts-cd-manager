@@ -10,10 +10,10 @@ from msrest.serialization import Model
 
 class CiConfiguration(Model):
     _attribute_map = {
-        'project': {'key': 'Project', 'type': 'Artifact'},
-        'build_definition': {'key': 'BuildDefinition', 'type': 'Artifact'},
-        'release_definition': {'key': 'ReleaseDefinition', 'type': 'Artifact'},
-        'result': {'key': 'Result', 'type': 'CiResult'},
+        'project': {'key': 'project', 'type': 'CiArtifact'},
+        'build_definition': {'key': 'buildDefinition', 'type': 'CiArtifact'},
+        'release_definition': {'key': 'releaseDefinition', 'type': 'CiArtifact'},
+        'result': {'key': 'result', 'type': 'CiResult'},
     }
 
     def __init__(self, project=None, build_definition=None, release_definition=None, result=None):
