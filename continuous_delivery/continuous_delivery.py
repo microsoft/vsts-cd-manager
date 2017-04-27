@@ -5,16 +5,17 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
+from sys import stderr
 from msrest.service_client import ServiceClient
 from msrest import Configuration, Serializer, Deserializer
-from .version import VERSION
 from msrest.pipeline import ClientRawResponse
 from msrest.exceptions import HttpOperationError
+from .version import VERSION
 from . import models
 
 
-class AzureTfsConfiguration(Configuration):
-    """Configuration for AzureTfs
+class ContinuousDeliveryConfiguration(Configuration):
+    """Configuration for Continuous Delivery
     Note that all parameters used to create this instance are saved as instance
     attributes.
 
@@ -32,17 +33,17 @@ class AzureTfsConfiguration(Configuration):
         if not isinstance(api_version, str):
             raise TypeError("Parameter 'api_version' must be str.")
         if not base_url:
-            base_url = 'https://stamp2.app.portalext.visualstudio.com/'
+            base_url = 'https://{account}.portalext.visualstudio.com/'
 
-        super(AzureTfsConfiguration, self).__init__(base_url)
+        super(ContinuousDeliveryConfiguration, self).__init__(base_url)
 
-        self.add_user_agent('azuretfs/{}'.format(VERSION))
+        self.add_user_agent('azurecli/{}/continuousdelivery/{}'.format(VERSION, VERSION))
 
         self.api_version = api_version
 
 
-class AzureTfs(object):
-    """AzureTfs
+class ContinuousDelivery(object):
+    """ContinuousDelivery
 
     :ivar config: Configuration for client.
     :vartype config: AzureTfsConfiguration
@@ -56,7 +57,7 @@ class AzureTfs(object):
 
     def __init__(
             self, api_version, base_url=None, creds=None):
-        self.config = AzureTfsConfiguration(api_version, base_url)
+        self.config = ContinuousDeliveryConfiguration(api_version, base_url)
         self._client = ServiceClient(creds, self.config)
 
         client_models = {k: v for k, v in models.__dict__.items() if isinstance(v, type)}
@@ -64,9 +65,9 @@ class AzureTfs(object):
         self._serialize = Serializer(client_models)
         self._deserialize = Deserializer(client_models)
 
-    def configure_continuous_deployment(
+    def provisioning_configuration(
             self, body, custom_headers=None, raw=False, **operation_config):
-        """ConfigureContinuousDeployment.
+        """ProvisioningConfiguration.
 
         :param body:
         :type body: :class:`ContinuousDeploymentConfiguration
@@ -84,7 +85,7 @@ class AzureTfs(object):
          :class:`HttpOperationError<msrest.exceptions.HttpOperationError>`
         """
         # Construct URL
-        url = '/_apis/azuretfs/continuousdeploymentconfiguration'
+        url = '/_apis/continuousdelivery/provisioningconfigurations'
 
         # Construct parameters
         query_parameters = {}
@@ -98,23 +99,25 @@ class AzureTfs(object):
             header_parameters.update(custom_headers)
 
         # Construct body
-        body_content = self._serialize.body(body, 'ContinuousDeploymentConfiguration')
+        body_content = self._serialize.body(body, 'ProvisioningConfiguration')
 
         # Construct and send request
         request = self._client.post(url, query_parameters)
         response = self._client.send(
             request, header_parameters, body_content, **operation_config)
         if response.status_code not in [200, 202]:
-            print("response:", response.status_code)
-            print(response.text)
+            print("POST", request.url, file=stderr)
+            print("BODY", body_content)
+            print("response:", response.status_code, file=stderr)
+            print(response.text, file=stderr)
             raise HttpOperationError(self._deserialize, response)
 
         deserialized = None
 
         if response.status_code == 200:
-            deserialized = self._deserialize('ContinuousDeploymentOperation', response)
+            deserialized = self._deserialize('ProvisioningConfiguration', response)
         if response.status_code == 202:
-            deserialized = self._deserialize('ContinuousDeploymentOperation', response)
+            deserialized = self._deserialize('ProvisioningConfiguration', response)
 
         if raw:
             client_raw_response = ClientRawResponse(deserialized, response)
@@ -122,12 +125,12 @@ class AzureTfs(object):
 
         return deserialized
 
-    def get_continuous_deployment_operation(
-            self, continuous_deployment_operation_id, custom_headers=None, raw=False, **operation_config):
+    def get_provisioning_configuration(
+            self, provisioning_configuration_id, custom_headers=None, raw=False, **operation_config):
         """GetContinuousDeploymentOperation.
 
-        :param continuous_deployment_operation_id:
-        :type continuous_deployment_operation_id: str
+        :param provisioning_configuration_id:
+        :type provisioning_configuration_id: str
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
@@ -141,9 +144,9 @@ class AzureTfs(object):
          :class:`HttpOperationError<msrest.exceptions.HttpOperationError>`
         """
         # Construct URL
-        url = '/_apis/azuretfs/continuousdeploymentconfiguration/{continuousDeploymentOperationId}'
+        url = '/_apis/continuousdelivery/provisioningconfigurations/{provisioningConfigurationId}'
         path_format_arguments = {
-            'continuousDeploymentOperationId': self._serialize.url("continuous_deployment_operation_id", continuous_deployment_operation_id, 'str')
+            'provisioningConfigurationId': self._serialize.url("provisioning_configuration_id", provisioning_configuration_id, 'str')
         }
         url = self._client.format_url(url, **path_format_arguments)
 
@@ -160,18 +163,18 @@ class AzureTfs(object):
         request = self._client.get(url, query_parameters)
         response = self._client.send(request, header_parameters, **operation_config)
         if response.status_code not in [200]:
-            print("response:", response.status_code)
-            print(response.text)
+            print("GET", request.url, file=stderr)
+            print("response:", response.status_code, file=stderr)
+            print(response.text, file=stderr)
             raise HttpOperationError(self._deserialize, response)
 
         deserialized = None
 
         if response.status_code == 200:
-            deserialized = self._deserialize('ContinuousDeploymentOperation', response)
+            deserialized = self._deserialize('ProvisioningConfiguration', response)
 
         if raw:
             client_raw_response = ClientRawResponse(deserialized, response)
             return client_raw_response
 
         return deserialized
-
