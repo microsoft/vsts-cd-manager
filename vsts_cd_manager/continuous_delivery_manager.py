@@ -141,7 +141,7 @@ class ContinuousDeliveryManager(object):
     def _verify_vsts_parameters(self, cd_account, source_repository):
         # if provider is vsts and repo is not vsts then we need the account name
         if source_repository.type in ['Github', 'ExternalGit'] and not cd_account:
-            raise RuntimeError('You must provide a value for cd-account since your repo-url is not a VSTS repository.')
+            raise RuntimeError('You must provide a value for cd-account since your repo-url is not a Team Services repository.')
 
     def _get_source_repository(self, uri, token, branch, cred):
         # Determine the type of repository (TfsGit, github, tfvc, externalGit)
@@ -182,17 +182,17 @@ class ContinuousDeliveryManager(object):
         # Wait for the configuration to finish and report on the status
         step = 5
         max = 100
-        self._update_progress(step, max, 'Setting up VSTS continuous deployment')
+        self._update_progress(step, max, 'Setting up Team Services continuous deployment')
         config = cd.get_provisioning_configuration(response.id)
         while config.ci_configuration.result.status == 'queued' or config.ci_configuration.result.status == 'inProgress':
             step += 5 if step + 5 < max else 0
-            self._update_progress(step, max, 'Setting up VSTS continuous deployment (' + config.ci_configuration.result.status + ')')
+            self._update_progress(step, max, 'Setting up Team Services continuous deployment (' + config.ci_configuration.result.status + ')')
             time.sleep(2)
             config = cd.get_provisioning_configuration(response.id)
         if config.ci_configuration.result.status == 'failed':
-            self._update_progress(max, max, 'Setting up VSTS continuous deployment (FAILED)')
+            self._update_progress(max, max, 'Setting up Team Services continuous deployment (FAILED)')
             raise RuntimeError(config.ci_configuration.result.status_message)
-        self._update_progress(max, max, 'Setting up VSTS continuous deployment (SUCCEEDED)')
+        self._update_progress(max, max, 'Setting up Team Services continuous deployment (SUCCEEDED)')
         return config
 
     def _get_summary(self, provisioning_configuration, account_url, account_name, account_created, subscription_id, resource_group_name, website_name):
@@ -201,9 +201,9 @@ class ContinuousDeliveryManager(object):
 
         # Add the vsts account info
         if not account_created:
-            summary += "The VSTS account '{}' was updated to handle the continuous delivery.\n".format(account_url)
+            summary += "The Team Services account '{}' was updated to handle the continuous delivery.\n".format(account_url)
         else:
-            summary += "The VSTS account '{}' was created to handle the continuous delivery.\n".format(account_url)
+            summary += "The Team Services account '{}' was created to handle the continuous delivery.\n".format(account_url)
 
         # Add the subscription info
         website_url = 'https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.Web/sites/{}/vstscd'.format(
