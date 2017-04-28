@@ -5,11 +5,14 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from .azure_tfs import AzureTfs
-from .vsts_info_provider import VstsInfoProvider
-from .version import VERSION
+from .collection_info import CollectionInfo
+from .repository_info import RepositoryInfo
+from .team_project_info import TeamProjectInfo
+from .vsts_info import VstsInfo
 
-__all__ = ['AzureTfs', 'VstsInfoProvider']
-
-__version__ = VERSION
-
+__all__ = [
+    'CollectionInfo',
+    'RepositoryInfo',
+    'TeamProjectInfo',
+    'VstsInfo',
+]

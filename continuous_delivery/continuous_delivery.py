@@ -38,7 +38,7 @@ class ContinuousDeliveryConfiguration(Configuration):
 
         super(ContinuousDeliveryConfiguration, self).__init__(base_url)
 
-        self.add_user_agent('azurecli/{}/continuousdelivery/{}'.format(VERSION, VERSION))
+        self.add_user_agent('azurecli/{} continuousdelivery/{}'.format(VERSION, VERSION))
 
         self.api_version = api_version
 
@@ -72,14 +72,14 @@ class ContinuousDelivery(object):
 
         :param body:
         :type body: :class:`ContinuousDeploymentConfiguration
-         <azuretfs.models.ContinuousDeploymentConfiguration>`
+         <vsts_info_provider.models.ContinuousDeploymentConfiguration>`
         :param dict custom_headers: headers that will be added to the request
         :param bool raw: returns the direct response alongside the
          deserialized response
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
         :rtype: :class:`ContinuousDeploymentOperation
-         <azuretfs.models.ContinuousDeploymentOperation>`
+         <vsts_info_provider.models.ContinuousDeploymentOperation>`
         :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
          if raw=true
         :raises:
@@ -137,7 +137,7 @@ class ContinuousDelivery(object):
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
         :rtype: :class:`ContinuousDeploymentOperation
-         <azuretfs.models.ContinuousDeploymentOperation>`
+         <vsts_info_provider.models.ContinuousDeploymentOperation>`
         :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
          if raw=true
         :raises:
