@@ -21,7 +21,7 @@ class VstsInfo(Model):
 
     _attribute_map = {
         'server_url': {'key': 'serverUrl', 'type': 'str'},
-        'collection_info': {'key': 'collection', 'type': 'Property'},
+        'collection_info': {'key': 'collection', 'type': 'CollectionInfo'},
         'repository_info': {'key': 'repository', 'type': 'RepositoryInfo'},
     }
 

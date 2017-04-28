@@ -36,7 +36,7 @@ class VstsInfoProviderConfiguration(Configuration):
         if not base_url:
             base_url = 'https://{}.visualstudio.com/'
 
-        super(AzureTfsConfiguration, self).__init__(base_url)
+        super(VstsInfoProviderConfiguration, self).__init__(base_url)
 
         self.add_user_agent('azurecli/{} vstsinfo/{}'.format(VERSION, VERSION))
 
@@ -58,7 +58,7 @@ class VstsInfoProvider(object):
 
     def __init__(
             self, api_version, vsts_git_url, creds=None):
-        self.config = AzureTfsConfiguration(api_version, vsts_git_url)
+        self.config = VstsInfoProviderConfiguration(api_version, vsts_git_url)
         self._client = ServiceClient(creds, self.config)
 
         client_models = {k: v for k, v in models.__dict__.items() if isinstance(v, type)}
