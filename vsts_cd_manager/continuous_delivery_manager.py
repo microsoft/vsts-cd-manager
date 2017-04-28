@@ -12,7 +12,7 @@ try:
 except ImportError:
     from urllib import quote  #pylint: disable=no-name-in-module
     from urlparse import urlparse  #pylint: disable=import-error
-from azuretfs import VstsInfoProvider
+from vsts_info_provider import VstsInfoProvider
 from continuous_delivery import ContinuousDelivery
 from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoParameters, BuildConfiguration,
                                         CiArtifact, CiConfiguration, ProvisioningConfiguration,

@@ -6,12 +6,41 @@
 # --------------------------------------------------------------------------
 
 from __future__ import print_function
+from sys import stderr
 from msrest.service_client import ServiceClient
-from msrest import Serializer, Deserializer
+from msrest import Configuration, Serializer, Deserializer
 from msrest.pipeline import ClientRawResponse
 from msrest.exceptions import HttpOperationError
 from . import models
-from .azure_tfs import AzureTfsConfiguration
+from .version import VERSION
+
+
+class VstsInfoProviderConfiguration(Configuration):
+    """Configuration for VstsInfoProvider
+    Note that all parameters used to create this instance are saved as instance
+    attributes.
+
+    :param api_version: Version of the API to use.  This should be set to
+     '3.2-preview' to use this version of the api.
+    :type api_version: str
+    :param str base_url: Service URL
+    """
+
+    def __init__(
+            self, api_version, base_url=None):
+
+        if api_version is None:
+            raise ValueError("Parameter 'api_version' must not be None.")
+        if not isinstance(api_version, str):
+            raise TypeError("Parameter 'api_version' must be str.")
+        if not base_url:
+            base_url = 'https://{}.visualstudio.com/'
+
+        super(AzureTfsConfiguration, self).__init__(base_url)
+
+        self.add_user_agent('azurecli/{} vstsinfo/{}'.format(VERSION, VERSION))
+
+        self.api_version = api_version
 
 
 class VstsInfoProvider(object):
@@ -47,7 +76,7 @@ class VstsInfoProvider(object):
         :param operation_config: :ref:`Operation configuration
          overrides<msrest:optionsforoperations>`.
         :rtype: :class:`ContinuousDeploymentOperation
-         <azuretfs.models.ContinuousDeploymentOperation>`
+         <vsts_info_provider.models.ContinuousDeploymentOperation>`
         :rtype: :class:`ClientRawResponse<msrest.pipeline.ClientRawResponse>`
          if raw=true
         :raises:
@@ -69,8 +98,8 @@ class VstsInfoProvider(object):
         request = self._client.get(url, query_parameters)
         response = self._client.send(request, header_parameters, **operation_config)
         if response.status_code not in [200]:
-            print("response:", response.status_code)
-            print(response.text)
+            print("response:", response.status_code, file=stderr)
+            print(response.text, file=stderr)
             raise HttpOperationError(self._deserialize, response)
 
         deserialized = None

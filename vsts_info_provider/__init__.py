@@ -5,7 +5,10 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.authentication import (
-    BasicAuthentication,
-    BasicTokenAuthentication,
-    OAuthTokenAuthentication)
+from .vsts_info_provider import VstsInfoProvider
+from .version import VERSION
+
+__all__ = ['VstsInfoProvider']
+
+__version__ = VERSION
+
