@@ -12,7 +12,7 @@ class BuildConfiguration(Model):
     _attribute_map = {
         'type': {'key': 'type', 'type': 'str'},
         'working_directory': {'key': 'workingDirectory', 'type': 'str'},
-        'node_type': {'key': 'NodeJsTaskRunnerType', 'type': 'str'},
+        'node_type': {'key': 'NodeJsTaskRunner', 'type': 'str'},
     }
 
     def __init__(self, type=None, working_directory=None, node_type=None):
