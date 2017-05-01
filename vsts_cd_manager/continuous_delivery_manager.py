@@ -117,7 +117,7 @@ class ContinuousDeliveryManager(object):
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
 
         # Construct the config body of the continuous delivery call
-        build_configuration = BuildConfiguration(app_type)
+        build_configuration = self._get_build_configuration(app_type, None)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
         auth_info = AuthorizationInfo('Headers', AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
         slot_name = azure_deployment_slot or 'staging'
@@ -143,6 +143,20 @@ class ContinuousDeliveryManager(object):
         # if provider is vsts and repo is not vsts then we need the account name
         if source_repository.type in ['Github', 'ExternalGit'] and not cd_account:
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a Team Services repository.')
+
+    def _get_build_configuration(self, app_type, working_directory):
+        build_configuration = None
+        if app_type == 'AspNetWap':
+            build_configuration = BuildConfiguration(app_type, working_directory)
+        elif app_type == 'AspNetCore':
+            build_configuration = BuildConfiguration(app_type, working_directory)
+        elif app_type == 'NodeJSWithGulp':
+            build_configuration = BuildConfiguration('NodeJS', working_directory, 'Gulp')
+        elif app_type == 'NodeJSWithGrunt':
+            build_configuration = BuildConfiguration('NodeJS', working_directory, 'Grunt')
+        else:
+            raise RuntimeError("The app_type '{}' was not understood. Accepted values: AspNetWap, AspNetCore, NodeJSWithGulp, NodeJSWithGrunt.")
+        return build_configuration
 
     def _get_source_repository(self, uri, token, branch, cred):
         # Determine the type of repository (TfsGit, github, tfvc, externalGit)
