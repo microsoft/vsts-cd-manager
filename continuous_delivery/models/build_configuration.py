@@ -12,8 +12,10 @@ class BuildConfiguration(Model):
     _attribute_map = {
         'type': {'key': 'type', 'type': 'str'},
         'working_directory': {'key': 'workingDirectory', 'type': 'str'},
+        'node_type': {'key': 'NodeJsTaskRunnerType', 'type': 'str'},
     }
 
-    def __init__(self, type=None, working_directory=None):
+    def __init__(self, type=None, working_directory=None, node_type=None):
         self.type = type
         self.working_directory = working_directory
+        self.node_type = node_type
