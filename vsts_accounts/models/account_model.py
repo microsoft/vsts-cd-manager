@@ -61,7 +61,7 @@ class AccountModel(Model):
         'namespace_id': {'key': 'namespaceId', 'type': 'str'},
         'new_collection_id': {'key': 'newCollectionId', 'type': 'str'},
         'organization_name': {'key': 'organizationName', 'type': 'str'},
-        'properties': {'key': 'properties', 'type': 'PropertiesCollection'},
+        'properties': {'key': 'properties', 'type': '{object}'},
         'status_reason': {'key': 'statusReason', 'type': 'str'},
     }
 

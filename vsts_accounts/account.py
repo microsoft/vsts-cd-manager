@@ -13,6 +13,7 @@ from .version import VERSION
 from msrest.pipeline import ClientRawResponse
 from msrest.exceptions import HttpOperationError
 from . import models
+from .models import AccountModel
 
 
 class AccountConfiguration(Configuration):
@@ -34,7 +35,7 @@ class AccountConfiguration(Configuration):
         if not isinstance(api_version, str):
             raise TypeError("Parameter 'api_version' must be str.")
         if not base_url:
-            base_url = 'https://fabrikam-fiber-inc.visualstudio.com/'
+            base_url = 'https://app.vssps.visualstudio.com'
 
         super(AccountConfiguration, self).__init__(base_url)
 
@@ -67,6 +68,34 @@ class Account(object):
         self._deserialize = Deserializer(client_models)
 
 
+    def account_exists(
+            self, account_name, custom_headers=None, raw=False, **operation_config):
+        # Construct URL
+        url = 'https://{}.visualstudio.com'.format(account_name)
+
+        # Construct parameters
+        query_parameters = {}
+
+        # Construct headers
+        header_parameters = {}
+        header_parameters['Content-Type'] = 'application/json; charset=utf-8'
+        if custom_headers:
+            header_parameters.update(custom_headers)
+
+        # Construct and send request
+        request = self._client.get(url, query_parameters)
+        response = self._client.send(request, header_parameters, **operation_config)
+
+        if response.status_code not in [200, 404]:
+            print("GET", request.url, file=stderr)
+            print("response:", response.status_code, file=stderr)
+            print(response.text, file=stderr)
+            raise HttpOperationError(self._deserialize, response)
+
+        if response.status_code == 200:
+            return True
+        return False
+
     def is_valid_account_name(
             self, account_name, custom_headers=None, raw=False, **operation_config):
         """IsValidAccountName.
@@ -94,6 +123,8 @@ class Account(object):
 
         # Construct parameters
         query_parameters = {}
+        if self.api_version:
+            query_parameters["api-version"] = self.api_version
 
         # Construct headers
         header_parameters = {}
@@ -246,6 +277,8 @@ class Account(object):
         query_parameters = {}
         if use_precreated is not None:
             query_parameters['usePrecreated'] = self._serialize.query("use_precreated", use_precreated, 'bool')
+        if self.api_version:
+            query_parameters["api-version"] = self.api_version
 
         # Construct headers
         header_parameters = {}
@@ -262,10 +295,10 @@ class Account(object):
             request, header_parameters, body_content, **operation_config)
 
         if response.status_code == 409:
-            # Return none to let the caller know that an account already exists with that name
-            return None
+            # Return Empty AccountModel to let the caller know that an account already exists with that name
+            return AccountModel(status_reason='An account already exists with that name.')
 
-        if response.status_code not in [200]:
+        if response.status_code not in [200, 201]:
             print("POST", request.url, file=stderr)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
@@ -274,6 +307,8 @@ class Account(object):
         deserialized = None
 
         if response.status_code == 200:
+            deserialized = self._deserialize('AccountModel', response)
+        if response.status_code == 201:
             deserialized = self._deserialize('AccountModel', response)
 
         if raw:
@@ -331,7 +366,7 @@ class Account(object):
         request = self._client.get(url, query_parameters)
         response = self._client.send(request, header_parameters, **operation_config)
 
-        if response.status_code not in [200]:
+        if response.status_code not in [200, 201]:
             print("GET", request.url, file=stderr)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
