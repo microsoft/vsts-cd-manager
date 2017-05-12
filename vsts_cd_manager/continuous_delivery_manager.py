@@ -103,15 +103,26 @@ class ContinuousDeliveryManager(object):
         account_url = 'https://{}.visualstudio.com'.format(quote(vsts_account_name))
         portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
-        # Try to create the account (return value of None means that the account already exists
-        #accountClient = Account('3.2-preview', 'https://app.vssps.visualstudio.com', self._azure_info.credentials)
-        #account_creation_parameters = AccountCreateInfoInternal(vsts_account_name)
-        #creation_results = accountClient.create_account(account_creation_parameters, True)
-        #account_created = not creation_results == None
-        #print(creation_results)
-        #return None
-
         account_created = False
+        accountClient = Account('3.2-preview', None, self._azure_info.credentials)
+        if create_account:
+            # Try to create the account (already existing accounts are fine too)
+            self._update_progress(0, 100, 'Creating or getting Team Services account information')
+            properties = {}
+            #TODO right now it is hard to match a random Azure region to a VSTS region
+            #properties['Microsoft.VisualStudio.Services.Account.TfsAccountRegion'] = self._azure_info.webapp_location
+            properties['Microsoft.VisualStudio.Services.Account.SignupEntryPoint'] = 'AzureCli'
+            account_creation_parameters = AccountCreateInfoInternal(
+                vsts_account_name, None, vsts_account_name, None, properties)
+            creation_results = accountClient.create_account(account_creation_parameters, True)
+            account_created = not creation_results.account_id == None
+            if account_created:
+                self._update_progress(5, 100, 'Team Services account created')
+        else:
+            # Verify that the account exists
+            if not accountClient.account_exists(vsts_account_name):
+                raise RuntimeError(
+                    "'The Team Services url '{}' does not exist. Check the spelling and try again.".format(account_url))
 
         # Create ContinuousDelivery client
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)

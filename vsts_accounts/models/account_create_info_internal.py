@@ -32,7 +32,7 @@ class AccountCreateInfoInternal(Model):
         'creator': {'key': 'creator', 'type': 'str'},
         'organization': {'key': 'organization', 'type': 'str'},
         'preferences': {'key': 'preferences', 'type': 'AccountPreferencesInternal'},
-        'properties': {'key': 'properties', 'type': 'PropertiesCollection'},
+        'properties': {'key': 'properties', 'type': '{object}'},
         'service_definitions': {'key': 'serviceDefinitions', 'type': '[object]'},
     }
 
