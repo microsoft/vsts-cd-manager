@@ -16,7 +16,7 @@ VERSION = "0.118.0"
 # prerequisite: setuptools
 # http://pypi.python.org/pypi/setuptools
 
-REQUIRES = ["msrest>=0.2.0"]
+REQUIRES = ["msrest>=0.2.0", 'mock']
 
 setup(
     name=NAME,
