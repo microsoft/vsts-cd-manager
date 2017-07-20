@@ -161,6 +161,8 @@ class ContinuousDeliveryManager(object):
             build_configuration = BuildConfiguration(app_type, working_directory)
         elif app_type == 'AspNetCore':
             build_configuration = BuildConfiguration(app_type, working_directory)
+        elif app_type == 'PHP':
+            build_configuration = BuildConfiguration(app_type, working_directory)
         elif app_type == 'NodeJSWithGulp':
             build_configuration = BuildConfiguration('NodeJS', working_directory, 'Gulp')
         elif app_type == 'NodeJSWithGrunt':
