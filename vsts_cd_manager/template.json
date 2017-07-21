@@ -1,0 +1,26 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "accountName": {
+      "type": "String"
+    },
+    "location": {
+      "type": "String"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "microsoft.visualstudio/account",
+      "name": "[parameters('accountName')]",
+      "apiVersion": "2014-04-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "operationType": "Create",
+        "accountName": "[parameters('accountName')]"
+      }
+    }
+  ],
+  "outputs": {}
+}

@@ -6,6 +6,7 @@
 from __future__ import print_function
 import re
 import time
+import os
 
 try:
     from urllib.parse import quote, urlparse
@@ -20,6 +21,7 @@ from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoPara
                                         SlotSwapConfiguration, SourceRepository)
 from vsts_accounts import Account
 from vsts_accounts.models import (AccountCreateInfoInternal)
+from azure.cli.command_modules.resource.custom import deploy_arm_template
 
 # Use this class to setup or remove continuous delivery mechanisms for Azure web sites using VSTS build and release
 class ContinuousDeliveryManager(object):
@@ -80,6 +82,17 @@ class ContinuousDeliveryManager(object):
         # TODO: this would be called by appservice web source-control delete
         return
 
+    def get_parameters(self, vsts_account_name):   
+        
+        parameters = {}
+        parameters["accountName"] = {
+            "value": vsts_account_name
+        }
+        parameters["location"] = {
+            "value": self._azure_info.webapp_location
+        }
+        return parameters
+    
     def setup_continuous_delivery(self, azure_deployment_slot, app_type, vsts_account_name, create_account,
                                   vsts_app_auth_token):
         """
@@ -106,18 +119,13 @@ class ContinuousDeliveryManager(object):
         account_created = False
         accountClient = Account('3.2-preview', None, self._azure_info.credentials)
         if create_account:
-            # Try to create the account (already existing accounts are fine too)
-            self._update_progress(0, 100, 'Creating or getting Team Services account information')
-            properties = {}
-            #TODO right now it is hard to match a random Azure region to a VSTS region
-            #properties['Microsoft.VisualStudio.Services.Account.TfsAccountRegion'] = self._azure_info.webapp_location
-            properties['Microsoft.VisualStudio.Services.Account.SignupEntryPoint'] = 'AzureCli'
-            account_creation_parameters = AccountCreateInfoInternal(
-                vsts_account_name, None, vsts_account_name, None, properties)
-            creation_results = accountClient.create_account(account_creation_parameters, True)
-            account_created = not creation_results.account_id == None
-            if account_created:
-                self._update_progress(5, 100, 'Team Services account created')
+            file_path = os.path.join(os.path.dirname(__file__), 'template.json')
+            deployment_name = 'VSTS.Account.Creation'
+            deployment_mode='incremental'
+            no_wait=False
+            parameters = self.get_parameters(vsts_account_name)
+            deploy_arm_template(self._azure_info.resource_group_name, file_path, None, deployment_name, parameters, deployment_mode, no_wait)
+            self._update_progress(5, 100, 'Team Services account created')
         else:
             # Verify that the account exists
             if not accountClient.account_exists(vsts_account_name):
