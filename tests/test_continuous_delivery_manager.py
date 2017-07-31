@@ -101,8 +101,12 @@ class TestContinousDeliveryManager(unittest.TestCase):
         # set required values
         cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
         cdman.set_repository_info('repoUrl1', 'master1', 'token1')
+        
+        cd_app_type = 'AspNetWap'
+        app_type_details = AppTypeDetails(cd_app_type, None, None, None)
+
         # call setup
-        result = cdman.setup_continuous_delivery('staging', 'AspNetWap', "account1", True, 'token2')
+        result = cdman.setup_continuous_delivery('staging', app_type_details, "account1", True, 'token2')
         self.assertEqual('SUCCESS', result.status)
         self.assertTrue("The Team Services account 'https://account1.visualstudio.com' was created" in result.status_message)
         self.assertEqual('https://portal.azure.com/#resource/subscriptions/sub1/resourceGroups/group1/providers/Microsoft.Web/sites/web1/vstscd', result.azure_continuous_delivery_url)
@@ -114,6 +118,47 @@ class TestContinousDeliveryManager(unittest.TestCase):
         self.assertEqual('https://account1.visualstudio.com/333/_build?_a=simple-process&definitionId=123', result.vsts_build_def_url)
         self.assertEqual('https://account1.visualstudio.com/333/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId=321&_a=releases', result.vsts_release_def_url)
 
+    def test_build_configuration(self):
+        # create CD manager
+        cdman = ContinuousDeliveryManager(None)
+        cd_app_type = None
+        nodejs_task_runner = None
+        python_framework = None
+        python_version = None
+        test_case_count = 8
+        for i in range(test_case_count):
+            cd_app_type, nodejs_task_runner, python_framework, python_version = self._set_build_configuration_variables(i, cd_app_type, nodejs_task_runner, python_framework, python_version)
+            app_type_details = AppTypeDetails(cd_app_type, nodejs_task_runner, python_framework, python_version)
+            if(i<3) : 
+                # Verifying build configuration outputs
+                build_configuration = cdman._get_build_configuration(app_type_details, None)                
+                self.assertEqual(build_configuration.type, cd_app_type)
+                self.assertEqual(build_configuration.node_type, nodejs_task_runner)
+                self.assertEqual(build_configuration.python_framework, python_framework)
+                self.assertEqual(build_configuration.python_version, python_version)
+            else :
+                # Verifying exceptions
+                with self.assertRaises(RuntimeError):
+                    cdman._get_build_configuration(app_type_details, None)
+
+    def _set_build_configuration_variables(self, i, cd_app_type, nodejs_task_runner, python_framework, python_version):
+        if(i==0):
+            return 'Python', None, 'Django', 'Python 2.7.12 x64'
+        elif(i==1):
+            return 'NodeJS', 'Gulp', None, None
+        elif(i==2):
+            return 'AspNetWap', None, None, None
+        elif(i==3):
+            return None, None, None, None
+        elif(i==4):
+            return 'UnacceptedAppType', None, None, None
+        elif(i==5):
+            return 'Python', None, 'UnacceptedFramework', 'Python 2.7.12 x64'
+        elif(i==6):
+            return 'Python', 'Django', None, 'UnexpectedVersion'
+        elif(i==7):
+            return 'NodeJS', 'UnexpectedNodeJSTaskRunner', None, None
+    
     def _mock_get_vsts_info(self, vsts_repo_url, cred):
         collection_info = CollectionInfo('111', 'collection111', 'https://collection111.visualstudio.com')
         project_info = TeamProjectInfo('333', 'project1', 'https://collection111.visualstudio.com/project1', 'good', '1')
@@ -127,6 +172,14 @@ class TestContinousDeliveryManager(unittest.TestCase):
             CiArtifact('321', 'releasedef321', 'https://collection111.visualstudio.com/project1/release/definition/321'),
             CiResult(status, status_message))
         return ProvisioningConfiguration('abcd', None, None, ci_config)
+
+# Copy of the AppTypeDetails class in azure-cli-appservice\azure\cli\command_modules\appservice\custom.py
+class AppTypeDetails(object):
+    def __init__(self, cd_app_type, nodejs_task_runner, python_framework, python_version):
+        self.cd_app_type = cd_app_type
+        self.nodejs_task_runner = nodejs_task_runner
+        self.python_framework = python_framework
+        self.python_version = python_version
 
 if __name__ == '__main__':
     unittest.main()
