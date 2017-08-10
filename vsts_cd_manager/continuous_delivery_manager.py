@@ -156,36 +156,35 @@ class ContinuousDeliveryManager(object):
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a Team Services repository.')
 
     def _get_build_configuration(self, app_type_details, working_directory):
-
-        accepted_app_type = ['AspNetWap', 'AspNetCore', 'NodeJS', 'PHP', 'Python']
-        accepted_nodejs_task_runner = ['None', 'Gulp', 'Grunt']
-        accepted_python_framework = ['Bottle', 'Django', 'Flask']
-        accepted_python_version = ['Python 2.7.12 x64', 'Python 2.7.12 x86', 'Python 2.7.13 x64', 'Python 2.7.13 x86', 'Python 3.5.3 x64', 'Python 3.5.3 x86', 'Python 3.6.0 x64', 'Python 3.6.0 x86', 'Python 3.6.2 x64', 'Python 3.6.1 x86']
+        accepted_app_types = ['AspNetWap', 'AspNetCore', 'NodeJS', 'PHP', 'Python']
+        accepted_nodejs_task_runners = ['None', 'Gulp', 'Grunt']
+        accepted_python_frameworks = ['Bottle', 'Django', 'Flask']
+        accepted_python_versions = ['Python 2.7.12 x64', 'Python 2.7.12 x86', 'Python 2.7.13 x64', 'Python 2.7.13 x86', 'Python 3.5.3 x64', 'Python 3.5.3 x86', 'Python 3.6.0 x64', 'Python 3.6.0 x86', 'Python 3.6.2 x64', 'Python 3.6.1 x86']
         
         build_configuration = None
-        app_type = app_type_details.cd_app_type
+        app_type = app_type_details.get('cd_app_type')
         if (app_type == 'AspNetWap') or (app_type == 'AspNetCore') or (app_type == 'PHP') :
             build_configuration = BuildConfiguration(app_type, working_directory)
         elif app_type == 'NodeJS' :
-            nodejs_task_runner = app_type_details.nodejs_task_runner
-            if any(s == nodejs_task_runner for s in accepted_nodejs_task_runner) :
+            nodejs_task_runner = app_type_details.get('nodejs_task_runner')
+            if any(s == nodejs_task_runner for s in accepted_nodejs_task_runners) :
                 build_configuration = BuildConfiguration(app_type, working_directory, nodejs_task_runner)
             else:
-                raise RuntimeError("The nodejs_task_runner %s was not understood. Accepted values: %s." % (nodejs_task_runner, accepted_nodejs_task_runner))
+                raise RuntimeError("The nodejs_task_runner %s was not understood. Accepted values: %s." % (nodejs_task_runner, accepted_nodejs_task_runners))
         elif app_type == 'Python' :
-            python_framework = app_type_details.python_framework
-            python_version = app_type_details.python_version
+            python_framework = app_type_details.get('python_framework')
+            python_version = app_type_details.get('python_version')
             django_setting_module = 'DjangoProjectName.settings'
             flask_project_name = 'FlaskProjectName'
-            if any(s == python_framework for s in accepted_python_framework) :
-                if any(s == python_version for s in accepted_python_version) :
+            if any(s == python_framework for s in accepted_python_frameworks) :
+                if any(s == python_version for s in accepted_python_versions) :
                     build_configuration = BuildConfiguration(app_type, working_directory, None, python_framework, python_version, django_setting_module, flask_project_name)
                 else :
-                    raise RuntimeError("The python_version %s was not understood. Accepted values: %s." % (python_version, accepted_python_version))
+                    raise RuntimeError("The python_version %s was not understood. Accepted values: %s." % (python_version, accepted_python_versions))
             else:
-                raise RuntimeError("The python_framework %s was not understood. Accepted values: %s." % (python_framework, accepted_python_framework))
+                raise RuntimeError("The python_framework %s was not understood. Accepted values: %s." % (python_framework, accepted_python_frameworks))
         else:
-            raise RuntimeError("The app_type %s was not understood. Accepted values: %s." % (app_type, accepted_app_type))
+            raise RuntimeError("The app_type %s was not understood. Accepted values: %s." % (app_type, accepted_app_types))
         return build_configuration
 
     def _get_source_repository(self, uri, token, branch, cred):

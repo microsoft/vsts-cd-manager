@@ -103,7 +103,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         cdman.set_repository_info('repoUrl1', 'master1', 'token1')
         
         cd_app_type = 'AspNetWap'
-        app_type_details = AppTypeDetails(cd_app_type, None, None, None)
+        app_type_details = create_cd_app_type_details_map(cd_app_type, None, None, None)
 
         # call setup
         result = cdman.setup_continuous_delivery('staging', app_type_details, "account1", True, 'token2')
@@ -128,7 +128,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         test_case_count = 8
         for i in range(test_case_count):
             cd_app_type, nodejs_task_runner, python_framework, python_version = self._set_build_configuration_variables(i, cd_app_type, nodejs_task_runner, python_framework, python_version)
-            app_type_details = AppTypeDetails(cd_app_type, nodejs_task_runner, python_framework, python_version)
+            app_type_details = create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version)
             if(i<3) : 
                 # Verifying build configuration outputs
                 build_configuration = cdman._get_build_configuration(app_type_details, None)                
@@ -173,13 +173,13 @@ class TestContinousDeliveryManager(unittest.TestCase):
             CiResult(status, status_message))
         return ProvisioningConfiguration('abcd', None, None, ci_config)
 
-# Copy of the AppTypeDetails class in azure-cli-appservice\azure\cli\command_modules\appservice\custom.py
-class AppTypeDetails(object):
-    def __init__(self, cd_app_type, nodejs_task_runner, python_framework, python_version):
-        self.cd_app_type = cd_app_type
-        self.nodejs_task_runner = nodejs_task_runner
-        self.python_framework = python_framework
-        self.python_version = python_version
+def create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version):
+    return {
+        'cd_app_type' : cd_app_type,
+        'nodejs_task_runner' : nodejs_task_runner,
+        'python_framework' : python_framework,
+        'python_version' : python_version
+    }
 
 if __name__ == '__main__':
     unittest.main()
