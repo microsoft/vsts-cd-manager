@@ -80,12 +80,12 @@ class ContinuousDeliveryManager(object):
         # TODO: this would be called by appservice web source-control delete
         return
 
-    def setup_continuous_delivery(self, azure_deployment_slot, app_type, vsts_account_name, create_account,
+    def setup_continuous_delivery(self, azure_deployment_slot, app_type_details, vsts_account_name, create_account,
                                   vsts_app_auth_token):
         """
         Use this method to setup Continuous Delivery of an Azure web site from a source control repository.
         :param azure_deployment_slot: the slot to use for deployment
-        :param app_type: the type of app that will be deployed. i.e. AspNetWap, AspNetCore, etc.
+        :param app_type_details: the details of app that will be deployed. i.e. app_type = Python, python_framework = Django etc.
         :param vsts_account_name:
         :param create_account:
         :param vsts_app_auth_token:
@@ -128,7 +128,7 @@ class ContinuousDeliveryManager(object):
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
 
         # Construct the config body of the continuous delivery call
-        build_configuration = self._get_build_configuration(app_type, None)
+        build_configuration = self._get_build_configuration(app_type_details, None)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
         auth_info = AuthorizationInfo('Headers', AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
         slot_name = azure_deployment_slot or 'staging'
@@ -155,20 +155,36 @@ class ContinuousDeliveryManager(object):
         if source_repository.type in ['Github', 'ExternalGit'] and not cd_account:
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a Team Services repository.')
 
-    def _get_build_configuration(self, app_type, working_directory):
+    def _get_build_configuration(self, app_type_details, working_directory):
+        accepted_app_types = ['AspNetWap', 'AspNetCore', 'NodeJS', 'PHP', 'Python']
+        accepted_nodejs_task_runners = ['None', 'Gulp', 'Grunt']
+        accepted_python_frameworks = ['Bottle', 'Django', 'Flask']
+        accepted_python_versions = ['Python 2.7.12 x64', 'Python 2.7.12 x86', 'Python 2.7.13 x64', 'Python 2.7.13 x86', 'Python 3.5.3 x64', 'Python 3.5.3 x86', 'Python 3.6.0 x64', 'Python 3.6.0 x86', 'Python 3.6.2 x64', 'Python 3.6.1 x86']
+        
         build_configuration = None
-        if app_type == 'AspNetWap':
+        app_type = app_type_details.get('cd_app_type')
+        if (app_type == 'AspNetWap') or (app_type == 'AspNetCore') or (app_type == 'PHP') :
             build_configuration = BuildConfiguration(app_type, working_directory)
-        elif app_type == 'AspNetCore':
-            build_configuration = BuildConfiguration(app_type, working_directory)
-        elif app_type == 'PHP':
-            build_configuration = BuildConfiguration(app_type, working_directory)
-        elif app_type == 'NodeJSWithGulp':
-            build_configuration = BuildConfiguration('NodeJS', working_directory, 'Gulp')
-        elif app_type == 'NodeJSWithGrunt':
-            build_configuration = BuildConfiguration('NodeJS', working_directory, 'Grunt')
+        elif app_type == 'NodeJS' :
+            nodejs_task_runner = app_type_details.get('nodejs_task_runner')
+            if any(s == nodejs_task_runner for s in accepted_nodejs_task_runners) :
+                build_configuration = BuildConfiguration(app_type, working_directory, nodejs_task_runner)
+            else:
+                raise RuntimeError("The nodejs_task_runner %s was not understood. Accepted values: %s." % (nodejs_task_runner, accepted_nodejs_task_runners))
+        elif app_type == 'Python' :
+            python_framework = app_type_details.get('python_framework')
+            python_version = app_type_details.get('python_version')
+            django_setting_module = 'DjangoProjectName.settings'
+            flask_project_name = 'FlaskProjectName'
+            if any(s == python_framework for s in accepted_python_frameworks) :
+                if any(s == python_version for s in accepted_python_versions) :
+                    build_configuration = BuildConfiguration(app_type, working_directory, None, python_framework, python_version, django_setting_module, flask_project_name)
+                else :
+                    raise RuntimeError("The python_version %s was not understood. Accepted values: %s." % (python_version, accepted_python_versions))
+            else:
+                raise RuntimeError("The python_framework %s was not understood. Accepted values: %s." % (python_framework, accepted_python_frameworks))
         else:
-            raise RuntimeError("The app_type '{}' was not understood. Accepted values: AspNetWap, AspNetCore, NodeJSWithGulp, NodeJSWithGrunt, PHP.")
+            raise RuntimeError("The app_type %s was not understood. Accepted values: %s." % (app_type, accepted_app_types))
         return build_configuration
 
     def _get_source_repository(self, uri, token, branch, cred):
