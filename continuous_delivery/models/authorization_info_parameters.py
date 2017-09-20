@@ -12,8 +12,12 @@ class AuthorizationInfoParameters(Model):
     _attribute_map = {
         'authorization': {'key': 'Authorization', 'type': 'str'},
         'access_token': {'key': 'AccessToken', 'type': 'str'},
+        'username': {'key': 'username', 'type': 'str'},
+        'password': {'key': 'password', 'type': 'str'}
     }
 
-    def __init__(self, authorization=None, access_token=None):
+    def __init__(self, authorization=None, access_token=None, username=None, password=None):
         self.authorization = authorization
         self.access_token = access_token
+        self.username = username
+        self.password = password
