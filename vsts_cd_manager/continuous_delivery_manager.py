@@ -6,6 +6,7 @@
 from __future__ import print_function
 import re
 import time
+import uuid
 
 try:
     from urllib.parse import quote, urlparse
@@ -17,7 +18,7 @@ from continuous_delivery import ContinuousDelivery
 from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoParameters, BuildConfiguration,
                                         CiArtifact, CiConfiguration, ProvisioningConfiguration,
                                         ProvisioningConfigurationSource, ProvisioningConfigurationTarget,
-                                        SlotSwapConfiguration, SourceRepository)
+                                        SlotSwapConfiguration, SourceRepository, CreateOptions)
 from vsts_accounts import Account
 from vsts_accounts.models import (AccountCreateInfoInternal)
 
@@ -60,17 +61,21 @@ class ContinuousDeliveryManager(object):
         self._azure_info.tenant_id = tenant_id
         self._azure_info.webapp_location = webapp_location
 
-    def set_repository_info(self, repo_url, branch, git_token):
+    def set_repository_info(self, repo_url, branch, git_token, private_repo_username, private_repo_password):
         """
         Call this method before attempting to setup continuous delivery to setup the source control settings
         :param repo_url:
         :param branch:
         :param git_token:
+        :param private_repo_username:
+        :param private_repo_password:
         :return:
         """
         self._repo_info.url = repo_url
         self._repo_info.branch = branch
         self._repo_info.git_token = git_token
+        self._repo_info._private_repo_username = private_repo_username
+        self._repo_info._private_repo_password = private_repo_password
 
     def remove_continuous_delivery(self):
         """
@@ -81,7 +86,7 @@ class ContinuousDeliveryManager(object):
         return
 
     def setup_continuous_delivery(self, azure_deployment_slot, app_type_details, vsts_account_name, create_account,
-                                  vsts_app_auth_token):
+                                  vsts_app_auth_token, test, webapp_list):
         """
         Use this method to setup Continuous Delivery of an Azure web site from a source control repository.
         :param azure_deployment_slot: the slot to use for deployment
@@ -89,6 +94,8 @@ class ContinuousDeliveryManager(object):
         :param vsts_account_name:
         :param create_account:
         :param vsts_app_auth_token:
+        :param test: Load test webapp name
+        :param webapp_list: Existing webapp list
         :return: a message indicating final status and instructions for the user
         """
 
@@ -96,7 +103,8 @@ class ContinuousDeliveryManager(object):
 
         # Verify inputs before we start generating tokens
         source_repository, account_name, team_project_name = self._get_source_repository(self._repo_info.url,
-            self._repo_info.git_token, branch, self._azure_info.credentials)
+            self._repo_info.git_token, branch, self._azure_info.credentials, 
+            self._repo_info._private_repo_username, self._repo_info._private_repo_password)
         self._verify_vsts_parameters(vsts_account_name, source_repository)
         vsts_account_name = vsts_account_name or account_name
         cd_project_name = team_project_name or self._azure_info.website_name
@@ -128,18 +136,12 @@ class ContinuousDeliveryManager(object):
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
 
         # Construct the config body of the continuous delivery call
-        build_configuration = self._get_build_configuration(app_type_details, None)
+        build_configuration = self._get_build_configuration(app_type_details)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
         auth_info = AuthorizationInfo('Headers', AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
-        slot_name = azure_deployment_slot or 'staging'
-        slot_swap = None  # TODO SlotSwapConfiguration(slot_name)
-        target = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'production', 'Production',
-                                                 self._azure_info.subscription_id,
-                                                 self._azure_info.subscription_name, self._azure_info.tenant_id,
-                                                 self._azure_info.website_name, self._azure_info.resource_group_name,
-                                                 self._azure_info.webapp_location, auth_info, slot_swap)
+        target = self.get_provisioning_configuration_target(auth_info, azure_deployment_slot, test, webapp_list)
         ci_config = CiConfiguration(CiArtifact(name=cd_project_name))
-        config = ProvisioningConfiguration(None, source, [target], ci_config)
+        config = ProvisioningConfiguration(None, source, target, ci_config)
 
         # Configure the continuous deliver using VSTS as a backend
         response = cd.provisioning_configuration(config)
@@ -150,20 +152,44 @@ class ContinuousDeliveryManager(object):
         else:
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
 
+    def get_provisioning_configuration_target(auth_info, azure_deployment_slot, test, webapp_list):
+        azure_deployment_slot_config = None if azure_deployment_slot is None else SlotSwapConfiguration(azure_deployment_slot)
+        slotTarget = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'production', 'Production',
+                                                 self._azure_info.subscription_id, self._azure_info.subscription_name, 
+                                                 self._azure_info.tenant_id, self._azure_info.website_name, 
+                                                 self._azure_info.resource_group_name, self._azure_info.webapp_location, 
+                                                 auth_info, azure_deployment_slot_config)
+        target = [slotTarget]
+        if test is not None:
+            create_options = None
+            if not any(s.name == test for s in webapp_list) :
+                app_service_plan_name = 'ServicePlan'+ str(uuid.uuid4())[:13]
+                create_options = CreateOptions(app_service_plan_name, 'Standard', self._azure_info.website_name)
+            testTarget = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'test', 'Load Test',
+                                                    self._azure_info.subscription_id,
+                                                    self._azure_info.subscription_name, self._azure_info.tenant_id,
+                                                    test, self._azure_info.resource_group_name,
+                                                    self._azure_info.webapp_location, auth_info, None, create_options)
+            target.append(testTarget)
+        return target
+
     def _verify_vsts_parameters(self, cd_account, source_repository):
         # if provider is vsts and repo is not vsts then we need the account name
         if source_repository.type in ['Github', 'ExternalGit'] and not cd_account:
             raise RuntimeError('You must provide a value for cd-account since your repo-url is not a Team Services repository.')
 
-    def _get_build_configuration(self, app_type_details, working_directory):
-        accepted_app_types = ['AspNetWap', 'AspNetCore', 'NodeJS', 'PHP', 'Python']
+    def _get_build_configuration(self, app_type_details):
+        accepted_app_types = ['AspNet', 'AspNetCore', 'NodeJS', 'PHP', 'Python']
         accepted_nodejs_task_runners = ['None', 'Gulp', 'Grunt']
         accepted_python_frameworks = ['Bottle', 'Django', 'Flask']
         accepted_python_versions = ['Python 2.7.12 x64', 'Python 2.7.12 x86', 'Python 2.7.13 x64', 'Python 2.7.13 x86', 'Python 3.5.3 x64', 'Python 3.5.3 x86', 'Python 3.6.0 x64', 'Python 3.6.0 x86', 'Python 3.6.2 x64', 'Python 3.6.1 x86']
         
         build_configuration = None
+        working_directory = app_type_details.get('app_working_dir')
         app_type = app_type_details.get('cd_app_type')
-        if (app_type == 'AspNetWap') or (app_type == 'AspNetCore') or (app_type == 'PHP') :
+        if (app_type == 'AspNet') :
+            build_configuration = BuildConfiguration('AspNetWap', working_directory)
+        elif (app_type == 'AspNetCore') or (app_type == 'PHP') :
             build_configuration = BuildConfiguration(app_type, working_directory)
         elif app_type == 'NodeJS' :
             nodejs_task_runner = app_type_details.get('nodejs_task_runner')
@@ -178,6 +204,7 @@ class ContinuousDeliveryManager(object):
             flask_project_name = 'FlaskProjectName'
             if any(s == python_framework for s in accepted_python_frameworks) :
                 if any(s == python_version for s in accepted_python_versions) :
+                    python_version = python_version.replace(" ", "").replace(".", "")
                     build_configuration = BuildConfiguration(app_type, working_directory, None, python_framework, python_version, django_setting_module, flask_project_name)
                 else :
                     raise RuntimeError("The python_version %s was not understood. Accepted values: %s." % (python_version, accepted_python_versions))
@@ -187,7 +214,7 @@ class ContinuousDeliveryManager(object):
             raise RuntimeError("The app_type %s was not understood. Accepted values: %s." % (app_type, accepted_app_types))
         return build_configuration
 
-    def _get_source_repository(self, uri, token, branch, cred):
+    def _get_source_repository(self, uri, token, branch, cred, username, password):
         # Determine the type of repository (TfsGit, github, tfvc, externalGit)
         # Find the identifier and set the properties; default to externalGit
         type = 'ExternalGit'
@@ -206,9 +233,14 @@ class ContinuousDeliveryManager(object):
         else:
             match = re.match(r'[htps]+\:\/\/github\.com\/(.+)', uri, re.IGNORECASE)
             if match:
-                type = 'Github'
-                identifier = match.group(1)
-                auth_info = AuthorizationInfo('PersonalAccessToken', AuthorizationInfoParameters(None, token))
+                if username is None and password is None:                    
+                    type = 'Github'
+                    identifier = match.group(1).replace(".git", "")
+                    auth_info = AuthorizationInfo('PersonalAccessToken', AuthorizationInfoParameters(None, token))
+                else:                    
+                    type = 'Git'
+                    identifier = uri
+                    auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))            
             else:
                 match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com\/(.+)', uri, re.IGNORECASE)
                 if match:
@@ -291,6 +323,9 @@ class _RepositoryInfo(object):
         self.url = None
         self.branch = None
         self.git_token = None
+        self.private_repo_username = None
+        self.private_repo_password = None
+
 
 class ContinuousDeliveryResult(object):
     def __init__(self, account_created, account_url, resource_group, subscription_id, website_name, cd_url, message, build_url, release_url, final_status):
@@ -305,3 +340,4 @@ class ContinuousDeliveryResult(object):
         self.status = 'SUCCESS'
         self.status_message = message
         self.status_details = final_status
+        
