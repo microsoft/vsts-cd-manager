@@ -152,7 +152,7 @@ class ContinuousDeliveryManager(object):
         else:
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
 
-    def get_provisioning_configuration_target(auth_info, azure_deployment_slot, test, webapp_list):
+    def get_provisioning_configuration_target(self, auth_info, azure_deployment_slot, test, webapp_list):
         azure_deployment_slot_config = None if azure_deployment_slot is None else SlotSwapConfiguration(azure_deployment_slot)
         slotTarget = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'production', 'Production',
                                                  self._azure_info.subscription_id, self._azure_info.subscription_name, 
