@@ -85,13 +85,13 @@ class ContinuousDeliveryManager(object):
         # TODO: this would be called by appservice web source-control delete
         return
 
-    def setup_continuous_delivery(self, azure_deployment_slot, app_type_details, vsts_account_name, create_account,
+    def setup_continuous_delivery(self, azure_deployment_slot, app_type_details, cd_project_url, create_account,
                                   vsts_app_auth_token, test, webapp_list):
         """
         Use this method to setup Continuous Delivery of an Azure web site from a source control repository.
         :param azure_deployment_slot: the slot to use for deployment
         :param app_type_details: the details of app that will be deployed. i.e. app_type = Python, python_framework = Django etc.
-        :param vsts_account_name:
+        :param cd_project_url:
         :param create_account:
         :param vsts_app_auth_token:
         :param test: Load test webapp name
@@ -100,6 +100,8 @@ class ContinuousDeliveryManager(object):
         """
 
         branch = self._repo_info.branch or 'refs/heads/master'
+        self._validate_cd_project_url(cd_project_url)
+        vsts_account_name = self._get_vsts_account_name(cd_project_url)
 
         # Verify inputs before we start generating tokens
         source_repository, account_name, team_project_name = self._get_source_repository(self._repo_info.url,
@@ -151,6 +153,13 @@ class ContinuousDeliveryManager(object):
                                      self._azure_info.resource_group_name, self._azure_info.website_name)
         else:
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
+    
+    def _validate_cd_project_url(self, cd_project_url):
+        if not cd_project_url.find('visualstudio.com') or not cd_project_url.find('https://'):
+            raise RuntimeError('Project URL should be in format https://<accountname>.visualstudio.com/<projectname>')
+
+    def _get_vsts_account_name(self, cd_project_url):
+        return (cd_project_url.split('.visualstudio.com', 1)[0]).strip('https://')
 
     def get_provisioning_configuration_target(self, auth_info, azure_deployment_slot, test, webapp_list):
         azure_deployment_slot_config = None if azure_deployment_slot is None else SlotSwapConfiguration(azure_deployment_slot)
@@ -171,7 +180,7 @@ class ContinuousDeliveryManager(object):
                                                     test, self._azure_info.resource_group_name,
                                                     self._azure_info.webapp_location, auth_info, None, create_options)
             target.append(testTarget)
-        return target
+        return target        
 
     def _verify_vsts_parameters(self, cd_account, source_repository):
         # if provider is vsts and repo is not vsts then we need the account name
