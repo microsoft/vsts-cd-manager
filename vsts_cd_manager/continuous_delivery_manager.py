@@ -64,11 +64,11 @@ class ContinuousDeliveryManager(object):
     def set_repository_info(self, repo_url, branch, git_token, private_repo_username, private_repo_password):
         """
         Call this method before attempting to setup continuous delivery to setup the source control settings
-        :param repo_url:
-        :param branch:
-        :param git_token:
-        :param private_repo_username:
-        :param private_repo_password:
+        :param repo_url: URL of the code repo
+        :param branch: repo branch
+        :param git_token: git token
+        :param private_repo_username: private repo username
+        :param private_repo_password: private repo password
         :return:
         """
         self._repo_info.url = repo_url
@@ -91,9 +91,9 @@ class ContinuousDeliveryManager(object):
         Use this method to setup Continuous Delivery of an Azure web site from a source control repository.
         :param azure_deployment_slot: the slot to use for deployment
         :param app_type_details: the details of app that will be deployed. i.e. app_type = Python, python_framework = Django etc.
-        :param cd_project_url:
-        :param create_account:
-        :param vsts_app_auth_token:
+        :param cd_project_url: CD Project url in the format of https://<accountname>.visualstudio.com/<projectname> 
+        :param create_account: Boolean value to decide if account need to be created or not
+        :param vsts_app_auth_token: Authentication token for vsts app
         :param test: Load test webapp name
         :param webapp_list: Existing webapp list
         :return: a message indicating final status and instructions for the user
@@ -226,11 +226,13 @@ class ContinuousDeliveryManager(object):
     def _get_source_repository(self, uri, token, branch, cred, username, password):
         # Determine the type of repository (TfsGit, github, tfvc, externalGit)
         # Find the identifier and set the properties; default to externalGit
-        type = 'ExternalGit'
+        type = 'Git'
         identifier = uri
         account_name = None
         team_project_name = None
         auth_info = None
+        if username is not None and password is not None: 
+            auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))
         match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com.*\/_git\/(.+)', uri, re.IGNORECASE)
         if match:
             type = 'TfsGit'
@@ -242,11 +244,11 @@ class ContinuousDeliveryManager(object):
         else:
             match = re.match(r'[htps]+\:\/\/github\.com\/(.+)', uri, re.IGNORECASE)
             if match:
-                if username is None and password is None:                    
+                if token is not None:                    
                     type = 'Github'
                     identifier = match.group(1).replace(".git", "")
                     auth_info = AuthorizationInfo('PersonalAccessToken', AuthorizationInfoParameters(None, token))
-                else:                    
+                elif username is not None and password is not None:                    
                     type = 'Git'
                     identifier = uri
                     auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))            
