@@ -155,7 +155,7 @@ class ContinuousDeliveryManager(object):
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
     
     def _validate_cd_project_url(self, cd_project_url):
-        if not cd_project_url.find('visualstudio.com') or not cd_project_url.find('https://'):
+        if -1 == cd_project_url.find('visualstudio.com') or -1 == cd_project_url.find('https//'):
             raise RuntimeError('Project URL should be in format https://<accountname>.visualstudio.com/<projectname>')
 
     def _get_vsts_account_name(self, cd_project_url):
