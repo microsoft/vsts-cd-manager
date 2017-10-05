@@ -155,7 +155,7 @@ class ContinuousDeliveryManager(object):
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
     
     def _validate_cd_project_url(self, cd_project_url):
-        if -1 == cd_project_url.find('visualstudio.com') or -1 == cd_project_url.find('https//'):
+        if -1 == cd_project_url.find('visualstudio.com') or -1 == cd_project_url.find('https://'):
             raise RuntimeError('Project URL should be in format https://<accountname>.visualstudio.com/<projectname>')
 
     def _get_vsts_account_name(self, cd_project_url):
@@ -171,7 +171,7 @@ class ContinuousDeliveryManager(object):
         target = [slotTarget]
         if test is not None:
             create_options = None
-            if not any(s.name == test for s in webapp_list) :
+            if webapp_list is not None and not any(s.name == test for s in webapp_list) :
                 app_service_plan_name = 'ServicePlan'+ str(uuid.uuid4())[:13]
                 create_options = CreateOptions(app_service_plan_name, 'Standard', self._azure_info.website_name)
             testTarget = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'test', 'Load Test',
@@ -248,10 +248,6 @@ class ContinuousDeliveryManager(object):
                     type = 'Github'
                     identifier = match.group(1).replace(".git", "")
                     auth_info = AuthorizationInfo('PersonalAccessToken', AuthorizationInfoParameters(None, token))
-                elif username is not None and password is not None:                    
-                    type = 'Git'
-                    identifier = uri
-                    auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))            
             else:
                 match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com\/(.+)', uri, re.IGNORECASE)
                 if match:

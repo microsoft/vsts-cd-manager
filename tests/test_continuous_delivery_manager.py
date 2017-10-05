@@ -53,14 +53,18 @@ class TestContinousDeliveryManager(unittest.TestCase):
 
     def test_set_repository_info(self):
         cdman = ContinuousDeliveryManager(None)
-        cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
+        cdman.set_repository_info('repoUrl1', 'master1', 'token1', 'username', 'password')
         self.assertEqual('master1', cdman._repo_info.branch)
         self.assertEqual('token1', cdman._repo_info.git_token)
         self.assertEqual('repoUrl1', cdman._repo_info.url)
+        self.assertEqual('username', cdman._repo_info._private_repo_username)
+        self.assertEqual('password', cdman._repo_info._private_repo_password)
         cdman.set_repository_info(None, None, None, None, None)
         self.assertEqual(None, cdman._repo_info.branch)
         self.assertEqual(None, cdman._repo_info.git_token)
         self.assertEqual(None, cdman._repo_info.url)
+        self.assertEqual(None, cdman._repo_info._private_repo_username)
+        self.assertEqual(None, cdman._repo_info._private_repo_password)
 
     @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
     @patch("vsts_cd_manager.continuous_delivery_manager.Account")
@@ -80,7 +84,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
         # call setup
         with self.assertRaises(RuntimeError) as context:
-            cdman.setup_continuous_delivery('staging', 'AspNet', "account1", False, 'token2', None, None)
+            cdman.setup_continuous_delivery('staging', 'AspNet', "https://account1.visualstudio.com", False, 'token2', None, None)
         self.assertTrue('does not exist' in str(context.exception))
 
     @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
@@ -106,7 +110,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         app_type_details = create_cd_app_type_details_map(cd_app_type, None, None, None, None)
 
         # call setup
-        result = cdman.setup_continuous_delivery('staging', app_type_details, "account1", True, 'token2', None, None)
+        result = cdman.setup_continuous_delivery('staging', app_type_details, "https://account1.visualstudio.com", True, 'token2', None, None)
         self.assertEqual('SUCCESS', result.status)
         self.assertTrue("The Team Services account 'https://account1.visualstudio.com' was created" in result.status_message)
         self.assertEqual('https://portal.azure.com/#resource/subscriptions/sub1/resourceGroups/group1/providers/Microsoft.Web/sites/web1/vstscd', result.azure_continuous_delivery_url)
@@ -117,6 +121,34 @@ class TestContinousDeliveryManager(unittest.TestCase):
         self.assertEqual('https://account1.visualstudio.com', result.vsts_account_url)
         self.assertEqual('https://account1.visualstudio.com/333/_build?_a=simple-process&definitionId=123', result.vsts_build_def_url)
         self.assertEqual('https://account1.visualstudio.com/333/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId=321&_a=releases', result.vsts_release_def_url)
+
+    def test_get_provisioning_configuration_target(self):
+        cdman = ContinuousDeliveryManager(None)
+        cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
+        target = cdman.get_provisioning_configuration_target('authInfo', 'staging', 'test1', None)
+        self.assertEqual(target[0].authorization_info, 'authInfo')
+        self.assertEqual(target[0].environment_type, 'production')
+        self.assertEqual(target[0].friendly_name, 'Production')
+        self.assertEqual(target[0].location, 'South Central US')
+        self.assertEqual(target[0].provider, 'azure')
+        self.assertEqual(target[0].resource_group_name, 'group1')
+        self.assertEqual(target[0].resource_identifier, 'web1')
+        self.assertEqual(target[0].subscription_id, 'sub1')
+        self.assertEqual(target[0].target_type, 'windowsAppService')
+        self.assertEqual(target[0].tenant_id, 'tenant1')
+        self.assertEqual(target[0].slot_swap_configuration.slot_name, 'staging')
+        self.assertEqual(target[1].authorization_info, 'authInfo')
+        self.assertEqual(target[1].environment_type, 'test')
+        self.assertEqual(target[1].friendly_name, 'Load Test')
+        self.assertEqual(target[1].location, 'South Central US')
+        self.assertEqual(target[1].provider, 'azure')
+        self.assertEqual(target[1].resource_group_name, 'group1')
+        self.assertEqual(target[1].resource_identifier, 'test1')
+        self.assertEqual(target[1].slot_swap_configuration, None)
+        self.assertEqual(target[1].subscription_id, 'sub1')
+        self.assertEqual(target[1].subscription_name, 'subname1')
+        self.assertEqual(target[1].target_type, 'windowsAppService')
+        self.assertEqual(target[1].tenant_id, 'tenant1')
 
     def test_build_configuration(self):
         # create CD manager
