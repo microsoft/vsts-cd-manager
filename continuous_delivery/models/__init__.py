@@ -16,7 +16,7 @@ from .provisioning_configuration_source import ProvisioningConfigurationSource
 from .provisioning_configuration_target import ProvisioningConfigurationTarget
 from .slot_swap_configuration import SlotSwapConfiguration
 from .source_repository import SourceRepository
-
+from .create_options import CreateOptions
 
 __all__ = [
     'AuthorizationInfo',
@@ -30,4 +30,5 @@ __all__ = [
     'ProvisioningConfigurationTarget',
     'SlotSwapConfiguration',
     'SourceRepository',
+    'CreateOptions',
 ]

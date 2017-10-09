@@ -22,11 +22,12 @@ class ProvisioningConfigurationTarget(Model):
         'location': {'key': 'location', 'type': 'str'},
         'authorization_info': {'key': 'authorizationInfo', 'type': 'AuthorizationInfo'},
         'slot_swap_configuration': {'key': 'slotSwapConfiguration', 'type': 'SlotSwapConfiguration'},
+        'create_options': {'key': 'createOptions', 'type': 'CreateOptions'}
     }
 
     def __init__(self, provider=None, target_type=None, environment_type=None, friendly_name=None, subscription_id=None, subscription_name=None, tenant_id=None,
                  resource_identifier=None, resource_group_name=None, location=None, authorization_info=None,
-                 slot_swap_configuration=None):
+                 slot_swap_configuration=None, create_options=None):
         self.provider = provider
         self.target_type = target_type
         self.environment_type = environment_type
@@ -39,3 +40,4 @@ class ProvisioningConfigurationTarget(Model):
         self.location = location
         self.authorization_info = authorization_info
         self.slot_swap_configuration = slot_swap_configuration
+        self.create_options = create_options

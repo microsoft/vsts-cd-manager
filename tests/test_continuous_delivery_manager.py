@@ -53,14 +53,18 @@ class TestContinousDeliveryManager(unittest.TestCase):
 
     def test_set_repository_info(self):
         cdman = ContinuousDeliveryManager(None)
-        cdman.set_repository_info('repoUrl1', 'master1', 'token1')
+        cdman.set_repository_info('repoUrl1', 'master1', 'token1', 'username', 'password')
         self.assertEqual('master1', cdman._repo_info.branch)
         self.assertEqual('token1', cdman._repo_info.git_token)
         self.assertEqual('repoUrl1', cdman._repo_info.url)
-        cdman.set_repository_info(None, None, None)
+        self.assertEqual('username', cdman._repo_info._private_repo_username)
+        self.assertEqual('password', cdman._repo_info._private_repo_password)
+        cdman.set_repository_info(None, None, None, None, None)
         self.assertEqual(None, cdman._repo_info.branch)
         self.assertEqual(None, cdman._repo_info.git_token)
         self.assertEqual(None, cdman._repo_info.url)
+        self.assertEqual(None, cdman._repo_info._private_repo_username)
+        self.assertEqual(None, cdman._repo_info._private_repo_password)
 
     @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
     @patch("vsts_cd_manager.continuous_delivery_manager.Account")
@@ -77,10 +81,10 @@ class TestContinousDeliveryManager(unittest.TestCase):
         cdman._get_vsts_info = self._mock_get_vsts_info
         # set required values
         cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
-        cdman.set_repository_info('repoUrl1', 'master1', 'token1')
+        cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
         # call setup
         with self.assertRaises(RuntimeError) as context:
-            cdman.setup_continuous_delivery('staging', 'AspNetWap', "account1", False, 'token2')
+            cdman.setup_continuous_delivery('staging', 'AspNet', "https://account1.visualstudio.com", False, 'token2', None, None)
         self.assertTrue('does not exist' in str(context.exception))
 
     @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
@@ -100,13 +104,13 @@ class TestContinousDeliveryManager(unittest.TestCase):
         cdman._get_vsts_info = self._mock_get_vsts_info
         # set required values
         cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
-        cdman.set_repository_info('repoUrl1', 'master1', 'token1')
+        cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
         
-        cd_app_type = 'AspNetWap'
-        app_type_details = create_cd_app_type_details_map(cd_app_type, None, None, None)
+        cd_app_type = 'AspNet'
+        app_type_details = create_cd_app_type_details_map(cd_app_type, None, None, None, None)
 
         # call setup
-        result = cdman.setup_continuous_delivery('staging', app_type_details, "account1", True, 'token2')
+        result = cdman.setup_continuous_delivery('staging', app_type_details, "https://account1.visualstudio.com", True, 'token2', None, None)
         self.assertEqual('SUCCESS', result.status)
         self.assertTrue("The Team Services account 'https://account1.visualstudio.com' was created" in result.status_message)
         self.assertEqual('https://portal.azure.com/#resource/subscriptions/sub1/resourceGroups/group1/providers/Microsoft.Web/sites/web1/vstscd', result.azure_continuous_delivery_url)
@@ -118,6 +122,34 @@ class TestContinousDeliveryManager(unittest.TestCase):
         self.assertEqual('https://account1.visualstudio.com/333/_build?_a=simple-process&definitionId=123', result.vsts_build_def_url)
         self.assertEqual('https://account1.visualstudio.com/333/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId=321&_a=releases', result.vsts_release_def_url)
 
+    def test_get_provisioning_configuration_target(self):
+        cdman = ContinuousDeliveryManager(None)
+        cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
+        target = cdman.get_provisioning_configuration_target('authInfo', 'staging', 'test1', None)
+        self.assertEqual(target[0].authorization_info, 'authInfo')
+        self.assertEqual(target[0].environment_type, 'production')
+        self.assertEqual(target[0].friendly_name, 'Production')
+        self.assertEqual(target[0].location, 'South Central US')
+        self.assertEqual(target[0].provider, 'azure')
+        self.assertEqual(target[0].resource_group_name, 'group1')
+        self.assertEqual(target[0].resource_identifier, 'web1')
+        self.assertEqual(target[0].subscription_id, 'sub1')
+        self.assertEqual(target[0].target_type, 'windowsAppService')
+        self.assertEqual(target[0].tenant_id, 'tenant1')
+        self.assertEqual(target[0].slot_swap_configuration.slot_name, 'staging')
+        self.assertEqual(target[1].authorization_info, 'authInfo')
+        self.assertEqual(target[1].environment_type, 'test')
+        self.assertEqual(target[1].friendly_name, 'Load Test')
+        self.assertEqual(target[1].location, 'South Central US')
+        self.assertEqual(target[1].provider, 'azure')
+        self.assertEqual(target[1].resource_group_name, 'group1')
+        self.assertEqual(target[1].resource_identifier, 'test1')
+        self.assertEqual(target[1].slot_swap_configuration, None)
+        self.assertEqual(target[1].subscription_id, 'sub1')
+        self.assertEqual(target[1].subscription_name, 'subname1')
+        self.assertEqual(target[1].target_type, 'windowsAppService')
+        self.assertEqual(target[1].tenant_id, 'tenant1')
+
     def test_build_configuration(self):
         # create CD manager
         cdman = ContinuousDeliveryManager(None)
@@ -125,39 +157,43 @@ class TestContinousDeliveryManager(unittest.TestCase):
         nodejs_task_runner = None
         python_framework = None
         python_version = None
+        app_working_dir = None
         test_case_count = 8
         for i in range(test_case_count):
-            cd_app_type, nodejs_task_runner, python_framework, python_version = self._set_build_configuration_variables(i, cd_app_type, nodejs_task_runner, python_framework, python_version)
-            app_type_details = create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version)
+            cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir = self._set_build_configuration_variables(i)
+            app_type_details = create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir)
             if(i<3) : 
                 # Verifying build configuration outputs
-                build_configuration = cdman._get_build_configuration(app_type_details, None)                
-                self.assertEqual(build_configuration.type, cd_app_type)
+                build_configuration = cdman._get_build_configuration(app_type_details)
                 self.assertEqual(build_configuration.node_type, nodejs_task_runner)
                 self.assertEqual(build_configuration.python_framework, python_framework)
-                self.assertEqual(build_configuration.python_version, python_version)
+                self.assertEqual(build_configuration.working_directory, app_working_dir)
+                if(python_version is not None) :
+                    self.assertEqual(build_configuration.python_version, python_version.replace(" ", "").replace(".", ""))
+                cd_app_type = 'AspNetWap' if cd_app_type == 'AspNet' else cd_app_type     
+                self.assertEqual(build_configuration.type, cd_app_type)
             else :
                 # Verifying exceptions
                 with self.assertRaises(RuntimeError):
-                    cdman._get_build_configuration(app_type_details, None)
+                    cdman._get_build_configuration(app_type_details)
 
-    def _set_build_configuration_variables(self, i, cd_app_type, nodejs_task_runner, python_framework, python_version):
+    def _set_build_configuration_variables(self, i):
         if(i==0):
-            return 'Python', None, 'Django', 'Python 2.7.12 x64'
+            return 'Python', None, 'Django', 'Python 2.7.12 x64', 'app_working_dir'
         elif(i==1):
-            return 'NodeJS', 'Gulp', None, None
+            return 'NodeJS', 'Gulp', None, None, None
         elif(i==2):
-            return 'AspNetWap', None, None, None
+            return 'AspNet', None, None, None, None
         elif(i==3):
-            return None, None, None, None
+            return None, None, None, None, None
         elif(i==4):
-            return 'UnacceptedAppType', None, None, None
+            return 'UnacceptedAppType', None, None, None, None
         elif(i==5):
-            return 'Python', None, 'UnacceptedFramework', 'Python 2.7.12 x64'
+            return 'Python', None, 'UnacceptedFramework', 'Python 2.7.12 x64', None
         elif(i==6):
-            return 'Python', 'Django', None, 'UnexpectedVersion'
+            return 'Python', 'Django', None, 'UnexpectedVersion', None
         elif(i==7):
-            return 'NodeJS', 'UnexpectedNodeJSTaskRunner', None, None
+            return 'NodeJS', 'UnexpectedNodeJSTaskRunner', None, None, None
     
     def _mock_get_vsts_info(self, vsts_repo_url, cred):
         collection_info = CollectionInfo('111', 'collection111', 'https://collection111.visualstudio.com')
@@ -173,12 +209,13 @@ class TestContinousDeliveryManager(unittest.TestCase):
             CiResult(status, status_message))
         return ProvisioningConfiguration('abcd', None, None, ci_config)
 
-def create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version):
+def create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir):
     return {
         'cd_app_type' : cd_app_type,
         'nodejs_task_runner' : nodejs_task_runner,
         'python_framework' : python_framework,
-        'python_version' : python_version
+        'python_version' : python_version,
+        'app_working_dir' : app_working_dir
     }
 
 if __name__ == '__main__':
