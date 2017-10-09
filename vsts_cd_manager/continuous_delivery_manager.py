@@ -85,11 +85,11 @@ class ContinuousDeliveryManager(object):
         # TODO: this would be called by appservice web source-control delete
         return
 
-    def setup_continuous_delivery(self, azure_deployment_slot, app_type_details, cd_project_url, create_account,
+    def setup_continuous_delivery(self, swap_with_slot, app_type_details, cd_project_url, create_account,
                                   vsts_app_auth_token, test, webapp_list):
         """
         Use this method to setup Continuous Delivery of an Azure web site from a source control repository.
-        :param azure_deployment_slot: the slot to use for deployment
+        :param swap_with_slot: the slot to use for deployment
         :param app_type_details: the details of app that will be deployed. i.e. app_type = Python, python_framework = Django etc.
         :param cd_project_url: CD Project url in the format of https://<accountname>.visualstudio.com/<projectname> 
         :param create_account: Boolean value to decide if account need to be created or not
@@ -141,7 +141,7 @@ class ContinuousDeliveryManager(object):
         build_configuration = self._get_build_configuration(app_type_details)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
         auth_info = AuthorizationInfo('Headers', AuthorizationInfoParameters('Bearer ' + vsts_app_auth_token))
-        target = self.get_provisioning_configuration_target(auth_info, azure_deployment_slot, test, webapp_list)
+        target = self.get_provisioning_configuration_target(auth_info, swap_with_slot, test, webapp_list)
         ci_config = CiConfiguration(CiArtifact(name=cd_project_name))
         config = ProvisioningConfiguration(None, source, target, ci_config)
 
@@ -161,13 +161,13 @@ class ContinuousDeliveryManager(object):
     def _get_vsts_account_name(self, cd_project_url):
         return (cd_project_url.split('.visualstudio.com', 1)[0]).strip('https://')
 
-    def get_provisioning_configuration_target(self, auth_info, azure_deployment_slot, test, webapp_list):
-        azure_deployment_slot_config = None if azure_deployment_slot is None else SlotSwapConfiguration(azure_deployment_slot)
+    def get_provisioning_configuration_target(self, auth_info, swap_with_slot, test, webapp_list):
+        swap_with_slot_config = None if swap_with_slot is None else SlotSwapConfiguration(swap_with_slot)
         slotTarget = ProvisioningConfigurationTarget('azure', 'windowsAppService', 'production', 'Production',
                                                  self._azure_info.subscription_id, self._azure_info.subscription_name, 
                                                  self._azure_info.tenant_id, self._azure_info.website_name, 
                                                  self._azure_info.resource_group_name, self._azure_info.webapp_location, 
-                                                 auth_info, azure_deployment_slot_config)
+                                                 auth_info, swap_with_slot_config)
         target = [slotTarget]
         if test is not None:
             create_options = None
