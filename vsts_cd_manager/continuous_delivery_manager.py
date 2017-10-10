@@ -225,14 +225,14 @@ class ContinuousDeliveryManager(object):
 
     def _get_source_repository(self, uri, token, branch, cred, username, password):
         # Determine the type of repository (TfsGit, github, tfvc, externalGit)
-        # Find the identifier and set the properties; default to externalGit
+        # Find the identifier and set the properties.
+        # Default is externalGit
         type = 'Git'
         identifier = uri
         account_name = None
         team_project_name = None
-        auth_info = None
-        if username is not None and password is not None: 
-            auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))
+        auth_info = AuthorizationInfo('UsernamePassword', AuthorizationInfoParameters(None, None, username, password))
+        
         match = re.match(r'[htps]+\:\/\/(.+)\.visualstudio\.com.*\/_git\/(.+)', uri, re.IGNORECASE)
         if match:
             type = 'TfsGit'
@@ -241,6 +241,7 @@ class ContinuousDeliveryManager(object):
             info = self._get_vsts_info(uri, cred)
             identifier = info.repository_info.id
             team_project_name = info.repository_info.project_info.name
+            auth_info = None
         else:
             match = re.match(r'[htps]+\:\/\/github\.com\/(.+)', uri, re.IGNORECASE)
             if match:
@@ -254,6 +255,7 @@ class ContinuousDeliveryManager(object):
                     type = 'TFVC'
                     identifier = match.group(2)
                     account_name = match.group(1)
+                    auth_info = None
         sourceRepository = SourceRepository(type, identifier, branch, auth_info)
         return sourceRepository, account_name, team_project_name
 
