@@ -18,9 +18,10 @@ from continuous_delivery import ContinuousDelivery
 from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoParameters, BuildConfiguration,
                                         CiArtifact, CiConfiguration, ProvisioningConfiguration,
                                         ProvisioningConfigurationSource, ProvisioningConfigurationTarget,
-                                        SlotSwapConfiguration, SourceRepository, CreateOptions)
+                                        SlotSwapConfiguration, SourceRepository, CreateOptions, AEXResponse)
 from vsts_accounts import Account
 from vsts_accounts.models import (AccountCreateInfoInternal)
+from aex_accounts import Account
 
 # Use this class to setup or remove continuous delivery mechanisms for Azure web sites using VSTS build and release
 class ContinuousDeliveryManager(object):
@@ -113,8 +114,11 @@ class ContinuousDeliveryManager(object):
         account_url = 'https://{}.visualstudio.com'.format(quote(vsts_account_name))
         portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
+        # AEX Account
+        aex_url = 'https://app.vsaex.visualstudio.com'
         account_created = False
-        accountClient = Account('3.2-preview', None, self._azure_info.credentials)
+        accountClient = Account('4.0-preview.1', aex_url, self._azure_info.credentials)
+
         if create_account:
             # Try to create the account (already existing accounts are fine too)
             self._update_progress(0, 100, 'Creating or getting Team Services account information')
@@ -124,19 +128,15 @@ class ContinuousDeliveryManager(object):
             properties['Microsoft.VisualStudio.Services.Account.SignupEntryPoint'] = 'AzureCli'
             account_creation_parameters = AccountCreateInfoInternal(
                 vsts_account_name, None, vsts_account_name, None, properties)
-            creation_results = accountClient.create_account(account_creation_parameters, True)
-            account_created = not creation_results.account_id == None
-            if account_created:
+            regions = accountClient.regions()
+            if regions.count > 0
+                region_name = regions.value.name
+            creation_results = accountClient.create_collection(vsts_account_name, region_name)
+            if creation_results.id:
                 self._update_progress(5, 100, 'Team Services account created')
-        else:
-            # Verify that the account exists
-            if not accountClient.account_exists(vsts_account_name):
-                raise RuntimeError(
-                    "'The Team Services url '{}' does not exist. Check the spelling and try again.".format(account_url))
-
+        
         # Create ContinuousDelivery client
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
-
         # Construct the config body of the continuous delivery call
         build_configuration = self._get_build_configuration(app_type_details)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)
