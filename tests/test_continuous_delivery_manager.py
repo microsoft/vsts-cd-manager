@@ -15,7 +15,7 @@ from continuous_delivery.models import ProvisioningConfigurationSource
 
 from continuous_delivery.models import ProvisioningConfiguration
 from mock import patch, Mock
-from vsts_accounts.models import AccountModel
+from aex_accounts.models import Collection
 from vsts_info_provider.models import TeamProjectInfo, RepositoryInfo, CollectionInfo, VstsInfo
 from vsts_cd_manager.continuous_delivery_manager import ContinuousDeliveryManager
 
@@ -68,27 +68,6 @@ class TestContinousDeliveryManager(unittest.TestCase):
 
     @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
     @patch("vsts_cd_manager.continuous_delivery_manager.Account")
-    def test_setup_continuous_delivery___account_doesnt_exist(self, mock_account, mock_cd):
-        # Mock the CD Client
-        mocked_cd = mock_cd.return_value
-        # Mock the Account Client
-        mocked_account = mock_account.return_value
-        mocked_account.create_account.return_value = AccountModel()
-        mocked_account.account_exists.return_value = False
-        # create CD manager
-        cdman = ContinuousDeliveryManager(None)
-        # Mock the vsts info call
-        cdman._get_vsts_info = self._mock_get_vsts_info
-        # set required values
-        cdman.set_azure_web_info('group1', 'web1', 'fakeCreds', 'sub1', 'subname1', 'tenant1', 'South Central US')
-        cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
-        # call setup
-        with self.assertRaises(RuntimeError) as context:
-            cdman.setup_continuous_delivery('staging', 'AspNet', "https://account1.visualstudio.com", False, 'token2', None, None)
-        self.assertTrue('does not exist' in str(context.exception))
-
-    @patch("vsts_cd_manager.continuous_delivery_manager.ContinuousDelivery")
-    @patch("vsts_cd_manager.continuous_delivery_manager.Account")
     def test_setup_continuous_delivery___create_account(self, mock_account, mock_cd):
         # Mock the CD Client
         mocked_cd = mock_cd.return_value
@@ -96,7 +75,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         mocked_cd.get_provisioning_configuration.return_value = self._get_provisioning_config('succeeded', '')
         # Mock the Account Client
         mocked_account = mock_account.return_value
-        mocked_account.create_account.return_value = AccountModel('111', 'collection111')
+        mocked_account.create_account.return_value = Collection('111', 'collection111')
         mocked_account.account_exists.return_value = False
         # create CD manager
         cdman = ContinuousDeliveryManager(None)
@@ -107,7 +86,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         cdman.set_repository_info('repoUrl1', 'master1', 'token1', None, None)
         
         cd_app_type = 'AspNet'
-        app_type_details = create_cd_app_type_details_map(cd_app_type, None, None, None, None)
+        app_type_details = self.create_cd_app_type_details_map(cd_app_type, None, None, None, None)
 
         # call setup
         result = cdman.setup_continuous_delivery('staging', app_type_details, "https://account1.visualstudio.com", True, 'token2', None, None)
@@ -121,6 +100,12 @@ class TestContinousDeliveryManager(unittest.TestCase):
         self.assertEqual('https://account1.visualstudio.com', result.vsts_account_url)
         self.assertEqual('https://account1.visualstudio.com/333/_build?_a=simple-process&definitionId=123', result.vsts_build_def_url)
         self.assertEqual('https://account1.visualstudio.com/333/_apps/hub/ms.vss-releaseManagement-web.hub-explorer?definitionId=321&_a=releases', result.vsts_release_def_url)
+
+        # call setup
+        mocked_account.create_account.return_value = Collection(None, 'collection111')        
+        with self.assertRaises(RuntimeError) as context:
+            cdman.setup_continuous_delivery('staging', app_type_details, "https://account1.visualstudio.com", True, 'token2', None, None)
+        self.assertTrue('Account creation failed' in str(context.exception))
 
     def test_get_provisioning_configuration_target(self):
         cdman = ContinuousDeliveryManager(None)
@@ -161,7 +146,7 @@ class TestContinousDeliveryManager(unittest.TestCase):
         test_case_count = 8
         for i in range(test_case_count):
             cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir = self._set_build_configuration_variables(i)
-            app_type_details = create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir)
+            app_type_details = self.create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir)
             if(i<3) : 
                 # Verifying build configuration outputs
                 build_configuration = cdman._get_build_configuration(app_type_details)
@@ -209,14 +194,14 @@ class TestContinousDeliveryManager(unittest.TestCase):
             CiResult(status, status_message))
         return ProvisioningConfiguration('abcd', None, None, ci_config)
 
-def create_cd_app_type_details_map(cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir):
-    return {
-        'cd_app_type' : cd_app_type,
-        'nodejs_task_runner' : nodejs_task_runner,
-        'python_framework' : python_framework,
-        'python_version' : python_version,
-        'app_working_dir' : app_working_dir
-    }
+    def create_cd_app_type_details_map(self, cd_app_type, nodejs_task_runner, python_framework, python_version, app_working_dir):
+        return {
+            'cd_app_type' : cd_app_type,
+            'nodejs_task_runner' : nodejs_task_runner,
+            'python_framework' : python_framework,
+            'python_version' : python_version,
+            'app_working_dir' : app_working_dir
+        }
 
 if __name__ == '__main__':
     unittest.main()
