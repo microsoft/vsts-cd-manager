@@ -113,14 +113,14 @@ class ContinuousDeliveryManager(object):
         portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
         # VSTS Account using AEX APIs
-        account_created = False        
+        account_created = False
         if create_account:
             self.create_vsts_account(self._azure_info.credentials, vsts_account_name)
             account_created = True
         
         # Create ContinuousDelivery client
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
-        
+
         # Construct the config body of the continuous delivery call
         build_configuration = self._get_build_configuration(app_type_details)
         source = ProvisioningConfigurationSource('codeRepository', source_repository, build_configuration)

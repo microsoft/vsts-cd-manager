@@ -41,7 +41,7 @@ class Account(object):
 
         # Handle Response
         deserialized = None
-        if response.status_code not in [200, 202]:
+        if response.status_code not in [200]:
             print("POST", request.url, file=stderr)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
@@ -62,7 +62,7 @@ class Account(object):
 
         # Handle Response
         deserialized = None
-        if response.status_code not in [200, 202]:
+        if response.status_code not in [200]:
             print("GET", request.url, file=stderr)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
@@ -83,7 +83,7 @@ class Account(object):
 
         # Handle Response
         deserialized = None
-        if response.status_code not in [200, 202]:
+        if response.status_code not in [200]:
             print("GET", request.url, file=stderr)
             print("response:", response.status_code, file=stderr)
             print(response.text, file=stderr)
