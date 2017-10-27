@@ -19,8 +19,7 @@ from continuous_delivery.models import (AuthorizationInfo, AuthorizationInfoPara
                                         CiArtifact, CiConfiguration, ProvisioningConfiguration,
                                         ProvisioningConfigurationSource, ProvisioningConfigurationTarget,
                                         SlotSwapConfiguration, SourceRepository, CreateOptions)
-from vsts_accounts import Account
-from vsts_accounts.models import (AccountCreateInfoInternal)
+from aex_accounts import Account
 
 # Use this class to setup or remove continuous delivery mechanisms for Azure web sites using VSTS build and release
 class ContinuousDeliveryManager(object):
@@ -113,27 +112,12 @@ class ContinuousDeliveryManager(object):
         account_url = 'https://{}.visualstudio.com'.format(quote(vsts_account_name))
         portalext_account_url = 'https://{}.portalext.visualstudio.com'.format(quote(vsts_account_name))
 
+        # VSTS Account using AEX APIs
         account_created = False
-        accountClient = Account('3.2-preview', None, self._azure_info.credentials)
         if create_account:
-            # Try to create the account (already existing accounts are fine too)
-            self._update_progress(0, 100, 'Creating or getting Team Services account information')
-            properties = {}
-            #TODO right now it is hard to match a random Azure region to a VSTS region
-            #properties['Microsoft.VisualStudio.Services.Account.TfsAccountRegion'] = self._azure_info.webapp_location
-            properties['Microsoft.VisualStudio.Services.Account.SignupEntryPoint'] = 'AzureCli'
-            account_creation_parameters = AccountCreateInfoInternal(
-                vsts_account_name, None, vsts_account_name, None, properties)
-            creation_results = accountClient.create_account(account_creation_parameters, True)
-            account_created = not creation_results.account_id == None
-            if account_created:
-                self._update_progress(5, 100, 'Team Services account created')
-        else:
-            # Verify that the account exists
-            if not accountClient.account_exists(vsts_account_name):
-                raise RuntimeError(
-                    "'The Team Services url '{}' does not exist. Check the spelling and try again.".format(account_url))
-
+            self.create_vsts_account(self._azure_info.credentials, vsts_account_name)
+            account_created = True
+        
         # Create ContinuousDelivery client
         cd = ContinuousDelivery('3.2-preview.1', portalext_account_url, self._azure_info.credentials)
 
@@ -154,6 +138,20 @@ class ContinuousDeliveryManager(object):
         else:
             raise RuntimeError('Unknown status returned from provisioning_configuration: ' + response.ci_configuration.result.status)
     
+    def create_vsts_account(self, creds, vsts_account_name):
+        aex_url = 'https://app.vsaex.visualstudio.com'
+        accountClient = Account('4.0-preview.1', aex_url, creds)
+        self._update_progress(0, 100, 'Creating or getting Team Services account information')            
+        regions = accountClient.regions()
+        if regions.count == 0:
+            raise RuntimeError('Region details not found.')
+        region_name = regions.value[0].name
+        create_account_reponse = accountClient.create_account(vsts_account_name, region_name)
+        if create_account_reponse.id:
+            self._update_progress(5, 100, 'Team Services account created')
+        else:
+            raise RuntimeError('Account creation failed.')
+        
     def _validate_cd_project_url(self, cd_project_url):
         if -1 == cd_project_url.find('visualstudio.com') or -1 == cd_project_url.find('https://'):
             raise RuntimeError('Project URL should be in format https://<accountname>.visualstudio.com/<projectname>')
@@ -349,4 +347,3 @@ class ContinuousDeliveryResult(object):
         self.status = 'SUCCESS'
         self.status_message = message
         self.status_details = final_status
-        

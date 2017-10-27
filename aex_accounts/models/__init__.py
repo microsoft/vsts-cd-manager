@@ -5,19 +5,14 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.serialization import Model
+from .collection import Collection
+from .name_availability import NameAvailability
+from .region_details import RegionDetails
+from .regions import Regions
 
-
-class VssJsonCollectionWrapperBase(Model):
-    """VssJsonCollectionWrapperBase.
-
-    :param count:
-    :type count: int
-    """
-
-    _attribute_map = {
-        'count': {'key': 'count', 'type': 'int'},
-    }
-
-    def __init__(self, count=None):
-        self.count = count
+__all__ = [
+    'Collection',
+    'NameAvailability',
+    'RegionDetails',
+    'Regions',
+]

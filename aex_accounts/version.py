@@ -5,7 +5,5 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-from msrest.authentication import (
-    BasicAuthentication,
-    BasicTokenAuthentication,
-    OAuthTokenAuthentication)
+#PyPI version of package
+VERSION = "1.0"

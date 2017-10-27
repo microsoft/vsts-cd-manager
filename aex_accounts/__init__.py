@@ -5,5 +5,7 @@
 # regenerated.
 # --------------------------------------------------------------------------
 
-VERSION = "3.2"
+from .account import Account
+from .version import VERSION
 
+__all__ = ['Account']
