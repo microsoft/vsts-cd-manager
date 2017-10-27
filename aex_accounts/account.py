@@ -11,7 +11,7 @@ class AccountConfiguration(Configuration):
 
     def __init__(self, api_version, base_url=None):
         super(AccountConfiguration, self).__init__(base_url)
-        self.add_user_agent('azurecli/{} vsts/{}'.format(VERSION, VERSION))
+        self.add_user_agent('azurecli/vsts/{}'.format(VERSION))
         self.api_version = api_version
 
 class Account(object):
@@ -48,27 +48,6 @@ class Account(object):
             raise HttpOperationError(self._deserialize, response)
         else:
             deserialized = self._deserialize('Collection', response)
-
-        return deserialized
-
-    def is_account_available(self, collection_name):
-
-        # Construct URL
-        url = '/_apis/hostacquisition/nameavailability/'+collection_name
-
-        # Construct and send request
-        request = self._client.get(url)
-        response = self._client.send(request)
-
-        # Handle Response
-        deserialized = None
-        if response.status_code not in [200]:
-            print("GET", request.url, file=stderr)
-            print("response:", response.status_code, file=stderr)
-            print(response.text, file=stderr)
-            raise HttpOperationError(self._deserialize, response)
-        else:
-            deserialized = self._deserialize('NameAvailability', response)
 
         return deserialized
 
