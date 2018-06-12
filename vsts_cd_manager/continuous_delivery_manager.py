@@ -157,7 +157,7 @@ class ContinuousDeliveryManager(object):
             raise RuntimeError('Project URL should be in format https://<accountname>.visualstudio.com/<projectname>')
 
     def _get_vsts_account_name(self, cd_project_url):
-        return (cd_project_url.split('.visualstudio.com', 1)[0]).strip('https://')
+        return (cd_project_url.split('.visualstudio.com', 1)[0]).split('https://', 1)[1]
 
     def get_provisioning_configuration_target(self, auth_info, swap_with_slot, test, webapp_list):
         swap_with_slot_config = None if swap_with_slot is None else SlotSwapConfiguration(swap_with_slot)
