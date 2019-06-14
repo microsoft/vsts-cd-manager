@@ -16,7 +16,8 @@ VERSION = "1.0.2"
 # prerequisite: setuptools
 # http://pypi.python.org/pypi/setuptools
 
-REQUIRES = ["msrest>=0.2.0", 'mock']
+REQUIRES = ["msrest>=0.2.0"]
+TEST_REQUIRES = ["msrest>=0.2.0", 'mock']
 
 setup(
     name=NAME,
@@ -26,6 +27,7 @@ setup(
     url="https://github.com/microsoft/vsts-cd-manager",
     keywords=["Microsoft", "VSTS", "Team Services", "SDK", "AzureTfs"],
     install_requires=REQUIRES,
+    tests_require=TEST_REQUIRES,
     packages=find_packages(),
     include_package_data=True,
     long_description="""\
